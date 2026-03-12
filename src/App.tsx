@@ -144,12 +144,9 @@ const Header = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center">
             <img 
-              src="/static/img/logo.png" 
+              src="/img/logo.png" 
               alt="FORTIMAX" 
               className="logo"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = "/static/img/logo_padrao.png";
-              }}
             />
           </Link>
 
@@ -258,12 +255,9 @@ const Footer = () => {
           <div className="space-y-4">
             <Link to="/" className="flex items-center">
               <img 
-                src="/static/img/logo.png" 
+                src="/img/logo.png" 
                 alt="FORTIMAX" 
-                className="logo brightness-0 invert"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = "/static/img/logo_padrao.png";
-                }}
+                className="logo"
               />
             </Link>
             <p className="text-brand-light/80 text-sm leading-relaxed">
