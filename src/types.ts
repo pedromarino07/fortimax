@@ -3,19 +3,23 @@ export interface Product {
   name: string;
   category: string;
   price: number;
+  oldPrice?: number;
+  oferta?: boolean;
   description: string;
   stock: number;
   images: string[];
   featured: boolean;
+  active?: boolean;
+}
+
+export interface User {
+  id: number;
+  nome: string;
+  usuario: string;
+  nivel: 'administrador' | 'gerente';
+  ativo: boolean;
 }
 
 export interface CartItem extends Product {
   quantity: number;
-}
-
-export interface Service {
-  id: number;
-  title: string;
-  description: string;
-  icon: string;
 }

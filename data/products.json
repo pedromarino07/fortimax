@@ -2,8 +2,10 @@
   {
     "id": 1,
     "name": "Cimento CP II-E-32 50kg",
-    "category": "Cimento",
+    "category": "Material de Construção",
     "price": 35.90,
+    "oldPrice": 39.90,
+    "oferta": true,
     "description": "Cimento Portland de alta qualidade, ideal para obras de pequeno a grande porte. Excelente trabalhabilidade e resistência.",
     "stock": 500,
     "images": [
@@ -15,8 +17,10 @@
   {
     "id": 2,
     "name": "Furadeira de Impacto 600W",
-    "category": "Ferramentas",
+    "category": "Ferragens",
     "price": 249.00,
+    "oldPrice": 299.00,
+    "oferta": true,
     "description": "Furadeira potente com função impacto, perfeita para perfurações em concreto, madeira e metal. Acompanha maleta.",
     "stock": 45,
     "images": [
@@ -28,8 +32,9 @@
   {
     "id": 3,
     "name": "Fio Flexível 2,5mm 100m Azul",
-    "category": "Elétrica",
+    "category": "Elétrico",
     "price": 189.90,
+    "oferta": false,
     "description": "Cabo flexível de cobre de alta condutividade. Ideal para instalações elétricas residenciais e comerciais.",
     "stock": 120,
     "images": [
@@ -40,8 +45,10 @@
   {
     "id": 4,
     "name": "Tubo PVC Esgoto 100mm 6m",
-    "category": "Hidráulica",
+    "category": "Hidráulico",
     "price": 85.00,
+    "oldPrice": 95.00,
+    "oferta": true,
     "description": "Tubo de PVC resistente para sistemas de esgoto sanitário. Fácil instalação e alta durabilidade.",
     "stock": 80,
     "images": [
@@ -54,6 +61,8 @@
     "name": "Tinta Acrílica Fosca Branca 18L",
     "category": "Tintas",
     "price": 320.00,
+    "oldPrice": 350.00,
+    "oferta": true,
     "description": "Tinta acrílica de alto rendimento e cobertura. Lavável e com acabamento fosco aveludado.",
     "stock": 60,
     "images": [
@@ -65,9 +74,9 @@
   {
     "id": 6,
     "name": "Martelo de Unha Polido 27mm",
-    "category": "Ferramentas",
+    "category": "Ferragens",
     "price": 42.50,
-    "description": "Martelo de aço forjado com cabo emborrachado ergonômico. Resistente e durável.",
+    "description": "Martelo de aço forjado com cabo emborrachado ergonômico. Residênte e durável.",
     "stock": 150,
     "images": [
       "https://picsum.photos/seed/martelo1/600/600"
@@ -77,7 +86,7 @@
   {
     "id": 7,
     "name": "Lâmpada LED 9W Bivolt",
-    "category": "Elétrica",
+    "category": "Elétrico",
     "price": 9.90,
     "description": "Lâmpada LED econômica com vida útil de 25.000 horas. Luz branca fria.",
     "stock": 1000,
@@ -89,7 +98,7 @@
   {
     "id": 8,
     "name": "Torneira Para Cozinha Gourmet",
-    "category": "Hidráulica",
+    "category": "Hidráulico",
     "price": 215.00,
     "description": "Torneira flexível com acabamento cromado. Design moderno e funcional para sua cozinha.",
     "stock": 30,
