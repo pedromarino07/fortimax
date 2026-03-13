@@ -413,7 +413,7 @@ const HomePage = () => {
       {/* Hero Banner */}
       <section className="relative h-[500px] overflow-hidden">
         <img
-          src="https://picsum.photos/seed/fortimax-banner/1920/1080"
+          src="/img/fortimax.png"
           alt="Banner FORTIMAX"
           className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
