@@ -21,8 +21,9 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nome TEXT NOT NULL,
     usuario TEXT UNIQUE NOT NULL,
+    email TEXT,
     senha TEXT NOT NULL,
-    nivel TEXT NOT NULL DEFAULT 'gerente', -- 'administrador' or 'gerente'
+    nivel TEXT NOT NULL DEFAULT 'vendedor', -- 'admin', 'gerente' or 'vendedor'
     ativo INTEGER DEFAULT 1,
     data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP
   );
@@ -50,9 +51,9 @@ if (userCount.count === 0) {
   const helenaPass = bcrypt.hashSync('helena123', salt);
   const tanizioPass = bcrypt.hashSync('tanizio123', salt);
 
-  db.prepare('INSERT INTO usuarios (nome, usuario, senha, nivel, ativo) VALUES (?, ?, ?, ?, ?)').run('Administrador', 'admin', adminPass, 'administrador', 1);
-  db.prepare('INSERT INTO usuarios (nome, usuario, senha, nivel, ativo) VALUES (?, ?, ?, ?, ?)').run('Helena', 'helena', helenaPass, 'gerente', 1);
-  db.prepare('INSERT INTO usuarios (nome, usuario, senha, nivel, ativo) VALUES (?, ?, ?, ?, ?)').run('Tanizio', 'tanizio', tanizioPass, 'gerente', 1);
+  db.prepare('INSERT INTO usuarios (nome, usuario, email, senha, nivel, ativo) VALUES (?, ?, ?, ?, ?, ?)').run('Administrador', 'admin', 'admin@fortimax.com.br', adminPass, 'admin', 1);
+  db.prepare('INSERT INTO usuarios (nome, usuario, email, senha, nivel, ativo) VALUES (?, ?, ?, ?, ?, ?)').run('Helena', 'helena', 'helena@fortimax.com.br', helenaPass, 'gerente', 1);
+  db.prepare('INSERT INTO usuarios (nome, usuario, email, senha, nivel, ativo) VALUES (?, ?, ?, ?, ?, ?)').run('Tanizio', 'tanizio', 'tanizio@fortimax.com.br', tanizioPass, 'vendedor', 1);
 }
 
 // Seed initial products from JSON if empty
@@ -104,7 +105,16 @@ const authenticate = (req: any, res: any, next: any) => {
 };
 
 const isAdmin = (req: any, res: any, next: any) => {
-  if (req.user.nivel !== 'administrador') return res.status(403).json({ error: 'Acesso negado' });
+  console.log(`Verificando isAdmin para usuário: ${req.user.usuario}, nível: ${req.user.nivel}`);
+  if (req.user.nivel !== 'admin') return res.status(403).json({ error: 'Acesso negado. Apenas Administradores podem realizar esta ação.' });
+  next();
+};
+
+const isGerenteOrAdmin = (req: any, res: any, next: any) => {
+  console.log(`Verificando isGerenteOrAdmin para usuário: ${req.user.usuario}, nível: ${req.user.nivel}`);
+  if (req.user.nivel !== 'admin' && req.user.nivel !== 'gerente') {
+    return res.status(403).json({ error: 'Acesso negado. Apenas Administradores ou Gerentes podem realizar esta ação.' });
+  }
   next();
 };
 
@@ -181,6 +191,11 @@ app.get('/api/admin/products', authenticate, (req, res) => {
 
 app.post('/api/admin/products', authenticate, upload.array('images'), (req: any, res) => {
   const { name, category, price, oldPrice, oferta, description, stock, featured, active } = req.body;
+  
+  if (oferta === 'true' && req.user.nivel === 'vendedor') {
+    return res.status(403).json({ error: 'Vendedores não podem criar ofertas.' });
+  }
+
   const files = req.files as any[];
   const images = files.map(f => `/static/img/produtos/${f.filename}`);
   
@@ -194,6 +209,11 @@ app.post('/api/admin/products', authenticate, upload.array('images'), (req: any,
 
 app.put('/api/admin/products/:id', authenticate, upload.array('images'), (req: any, res) => {
   const { name, category, price, oldPrice, oferta, description, stock, featured, active, existingImages } = req.body;
+
+  if (oferta === 'true' && req.user.nivel === 'vendedor') {
+    return res.status(403).json({ error: 'Vendedores não podem gerenciar ofertas.' });
+  }
+
   const files = req.files as any[];
   let images = JSON.parse(existingImages || '[]');
   if (files.length > 0) {
@@ -216,19 +236,38 @@ app.delete('/api/admin/products/:id', authenticate, (req, res) => {
 
 // Admin Users CRUD
 app.get('/api/admin/users', authenticate, isAdmin, (req, res) => {
-  const users = db.prepare('SELECT id, nome, usuario, nivel, ativo, data_criacao FROM usuarios').all();
+  const users = db.prepare('SELECT id, nome, usuario, email, nivel, ativo, data_criacao FROM usuarios').all();
   res.json(users.map((u: any) => ({ ...u, ativo: !!u.ativo })));
 });
 
 app.post('/api/admin/users', authenticate, isAdmin, (req, res) => {
-  const { nome, usuario, senha, nivel, ativo } = req.body;
+  const { nome, usuario, email, senha, nivel, ativo } = req.body;
   const salt = bcrypt.genSaltSync(10);
   const hashedPass = bcrypt.hashSync(senha, salt);
   try {
-    db.prepare('INSERT INTO usuarios (nome, usuario, senha, nivel, ativo) VALUES (?, ?, ?, ?, ?)').run(nome, usuario, hashedPass, nivel, ativo ? 1 : 0);
+    db.prepare('INSERT INTO usuarios (nome, usuario, email, senha, nivel, ativo) VALUES (?, ?, ?, ?, ?, ?)').run(nome, usuario, email, hashedPass, nivel, ativo ? 1 : 0);
     res.json({ message: 'Usuário criado' });
   } catch (e) {
-    res.status(400).json({ error: 'Usuário já cadastrado' });
+    res.status(400).json({ error: 'Usuário ou e-mail já cadastrado' });
+  }
+});
+
+app.put('/api/admin/users/:id', authenticate, isAdmin, (req, res) => {
+  const { nome, usuario, email, nivel, ativo, senha } = req.body;
+  
+  try {
+    if (senha) {
+      const salt = bcrypt.genSaltSync(10);
+      const hashedPass = bcrypt.hashSync(senha, salt);
+      db.prepare('UPDATE usuarios SET nome = ?, usuario = ?, email = ?, nivel = ?, ativo = ?, senha = ? WHERE id = ?')
+        .run(nome, usuario, email, nivel, ativo ? 1 : 0, hashedPass, req.params.id);
+    } else {
+      db.prepare('UPDATE usuarios SET nome = ?, usuario = ?, email = ?, nivel = ?, ativo = ? WHERE id = ?')
+        .run(nome, usuario, email, nivel, ativo ? 1 : 0, req.params.id);
+    }
+    res.json({ message: 'Usuário atualizado' });
+  } catch (e) {
+    res.status(400).json({ error: 'Erro ao atualizar usuário' });
   }
 });
 
@@ -238,7 +277,7 @@ app.delete('/api/admin/users/:id', authenticate, isAdmin, (req, res) => {
 });
 
 // Dashboard Stats
-app.get('/api/admin/stats', authenticate, (req, res) => {
+app.get('/api/admin/stats', authenticate, isGerenteOrAdmin, (req: any, res) => {
   const totalProducts = db.prepare('SELECT count(*) as count FROM products').get() as any;
   const activeProducts = db.prepare('SELECT count(*) as count FROM products WHERE active = 1').get() as any;
   const offersCount = db.prepare('SELECT count(*) as count FROM products WHERE oferta = 1').get() as any;

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useParams, useLocation } from 'react-router-dom';
-import { ShoppingCart, Search, Menu, X, Phone, Mail, MapPin, Facebook, Instagram, Twitter, ChevronRight, Star, Trash2, Plus, Minus, Clock, LayoutDashboard, Package, Tag, Users, LogOut, LogIn, PlusCircle, Edit, CheckCircle, XCircle } from 'lucide-react';
+import { ShoppingCart, Search, Menu, X, Phone, Mail, MapPin, Facebook, Instagram, Twitter, ChevronRight, Trash2, Plus, Minus, Clock, LayoutDashboard, Package, Tag, Users, LogOut, LogIn, PlusCircle, Edit, CheckCircle, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Product, CartItem, User } from './types';
 
@@ -136,17 +136,14 @@ const Header = () => {
 
   return (
     <header className="bg-white shadow-md sticky top-0 z-50">
-      <div className="bg-brand-primary text-white text-xs py-2 text-center font-medium">
-        ENTREGA GRÁTIS PARA FORTIM E REGIÃO EM COMPRAS ACIMA DE R$ 500,00!
-      </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-24">
+        <div className="flex justify-between items-center h-20 md:h-24">
           {/* Logo */}
           <Link to="/" className="flex items-center">
             <img 
               src="/img/logo.png" 
               alt="FORTIMAX" 
-              className="logo"
+              className="h-10 md:h-14 w-auto"
             />
           </Link>
 
@@ -169,7 +166,7 @@ const Header = () => {
             )}
           </nav>
 
-          {/* Search & Cart */}
+          {/* Desktop Search & Cart */}
           <div className="hidden md:flex items-center space-x-6">
             <form onSubmit={handleSearch} className="relative">
               <input
@@ -193,7 +190,7 @@ const Header = () => {
             </Link>
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile Cart & Menu Button */}
           <div className="md:hidden flex items-center space-x-4">
             <Link to="/carrinho" className="relative text-gray-700">
               <ShoppingCart size={24} />
@@ -203,40 +200,82 @@ const Header = () => {
                 </span>
               )}
             </Link>
-            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-gray-700">
+            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-gray-700 p-1">
               {isMenuOpen ? <X size={28} /> : <Menu size={28} />}
             </button>
           </div>
         </div>
+
+        {/* Mobile Search Bar - Always visible on mobile below logo row */}
+        <div className="md:hidden pb-4">
+          <form onSubmit={handleSearch} className="relative">
+            <input
+              type="text"
+              placeholder="Buscar materiais..."
+              className="w-full pl-4 pr-10 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-primary bg-gray-50"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <button type="submit" className="absolute right-3 top-3 text-gray-400">
+              <Search size={20} />
+            </button>
+          </form>
+        </div>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu Overlay */}
       <AnimatePresence>
         {isMenuOpen && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-white border-t border-gray-100 overflow-hidden"
+            initial={{ opacity: 0, x: '100%' }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed inset-0 z-[60] md:hidden"
           >
-            <div className="px-4 pt-2 pb-6 space-y-4">
-              <form onSubmit={handleSearch} className="relative mt-2">
-                <input
-                  type="text"
-                  placeholder="Buscar materiais..."
-                  className="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-full focus:outline-none"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                <button type="submit" className="absolute right-3 top-2.5 text-gray-400">
-                  <Search size={20} />
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)} />
+            
+            {/* Menu Content */}
+            <div className="absolute right-0 top-0 bottom-0 w-4/5 max-w-sm bg-white shadow-2xl flex flex-col">
+              <div className="p-6 flex justify-between items-center border-b border-gray-100">
+                <span className="font-black text-brand-dark uppercase tracking-widest">Menu</span>
+                <button onClick={() => setIsMenuOpen(false)} className="text-gray-500">
+                  <X size={24} />
                 </button>
-              </form>
-              <nav className="flex flex-col space-y-4 font-bold text-gray-700 uppercase text-sm">
-                <Link to="/" onClick={() => setIsMenuOpen(false)} className="hover:text-brand-primary">Início</Link>
-                <Link to="/produtos" onClick={() => setIsMenuOpen(false)} className="hover:text-brand-primary">Produtos</Link>
-                <Link to="/ofertas" onClick={() => setIsMenuOpen(false)} className="hover:text-brand-primary">Ofertas</Link>
-                <Link to="/contato" onClick={() => setIsMenuOpen(false)} className="hover:text-brand-primary">Contato</Link>
+              </div>
+              
+              <nav className="flex-grow p-6 flex flex-col space-y-6 font-bold text-gray-700 uppercase text-lg">
+                <Link to="/" onClick={() => setIsMenuOpen(false)} className="hover:text-brand-primary flex items-center justify-between">
+                  <span>Início</span>
+                  <ChevronRight size={20} className="text-gray-300" />
+                </Link>
+                <Link to="/produtos" onClick={() => setIsMenuOpen(false)} className="hover:text-brand-primary flex items-center justify-between">
+                  <span>Produtos</span>
+                  <ChevronRight size={20} className="text-gray-300" />
+                </Link>
+                <Link to="/ofertas" onClick={() => setIsMenuOpen(false)} className="hover:text-brand-primary flex items-center justify-between">
+                  <span>Ofertas</span>
+                  <ChevronRight size={20} className="text-gray-300" />
+                </Link>
+                <Link to="/contato" onClick={() => setIsMenuOpen(false)} className="hover:text-brand-primary flex items-center justify-between">
+                  <span>Contato</span>
+                  <ChevronRight size={20} className="text-gray-300" />
+                </Link>
+                
+                <div className="pt-6 border-t border-gray-100">
+                  {user ? (
+                    <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="text-brand-primary flex items-center space-x-3">
+                      <LayoutDashboard size={24} />
+                      <span>Painel de Acesso</span>
+                    </Link>
+                  ) : (
+                    <Link to="/login" onClick={() => setIsMenuOpen(false)} className="text-brand-primary flex items-center space-x-3">
+                      <LogIn size={24} />
+                      <span>Entrar / Login</span>
+                    </Link>
+                  )}
+                </div>
               </nav>
             </div>
           </motion.div>
@@ -257,7 +296,7 @@ const Footer = () => {
               <img 
                 src="/img/logo.png" 
                 alt="FORTIMAX" 
-                className="logo"
+                className="logo brightness-0 invert"
               />
             </Link>
             <p className="text-brand-light/80 text-sm leading-relaxed">
@@ -329,8 +368,9 @@ const Footer = () => {
             </ul>
           </div>
         </div>
-        <div className="border-t border-brand-primary/30 pt-8 text-center text-xs text-brand-light/50">
+        <div className="border-t border-brand-primary/30 pt-8 text-center text-xs text-brand-light/50 space-y-2">
           <p>© 2026 FORTIMAX Materiais de Construção. Todos os direitos reservados.</p>
+          <p className="font-bold tracking-widest">CNPJ: 07.639.148/0001-10</p>
         </div>
       </div>
     </footer>
@@ -436,7 +476,7 @@ const HomePage = () => {
               Ver todos <ChevronRight size={20} />
             </Link>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {featuredProducts.map(product => (
               <ProductCard key={product.id} product={product} />
             ))}
@@ -490,55 +530,46 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
       whileHover={{ y: -5 }}
       className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden group flex flex-col h-full hover:shadow-xl transition-all"
     >
-      <Link to={`/produto/${product.id}`} className="relative h-64 overflow-hidden block">
+      <Link to={`/produto/${product.id}`} className="relative h-48 md:h-64 overflow-hidden block">
         <img
           src={product.images[0]}
           alt={product.name}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           referrerPolicy="no-referrer"
         />
-        <div className="absolute top-4 left-4 bg-brand-primary text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-          {product.category}
-        </div>
         {product.oferta && (
-          <div className="absolute top-4 right-4 bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg animate-pulse uppercase tracking-wider">
+          <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-red-600 text-white text-[8px] md:text-[10px] font-black px-2 py-1 md:px-3 md:py-1.5 rounded-full shadow-xl animate-pulse uppercase tracking-widest border border-white/20">
             OFERTA
           </div>
         )}
       </Link>
-      <div className="p-6 flex flex-col flex-grow">
-        <Link to={`/produto/${product.id}`} className="text-lg font-bold text-brand-dark hover:text-brand-primary transition-colors line-clamp-2 mb-2 uppercase text-sm tracking-tight">
+      <div className="p-4 md:p-6 flex flex-col flex-grow">
+        <Link to={`/produto/${product.id}`} className="font-bold text-brand-dark hover:text-brand-primary transition-colors line-clamp-2 mb-3 md:mb-4 uppercase text-xs md:text-sm tracking-tight leading-tight">
           {product.name}
         </Link>
-        <div className="flex items-center space-x-1 mb-4">
-          {[...Array(5)].map((_, i) => (
-            <Star key={i} size={14} className="fill-yellow-400 text-yellow-400" />
-          ))}
-          <span className="text-xs text-gray-400 ml-2 font-medium">(4.8)</span>
-        </div>
         <div className="mt-auto">
-          <div className="flex flex-col mb-4">
+          <div className="flex flex-col mb-3 md:mb-4">
             {product.oldPrice && (
-              <span className="text-sm text-gray-400 line-through font-medium">
+              <span className="text-[10px] md:text-sm text-gray-400 line-through font-medium">
                 De: R$ {product.oldPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </span>
             )}
-            <div className="text-2xl font-black text-brand-dark">
+            <div className="text-lg md:text-2xl font-black text-brand-dark">
               {product.oldPrice ? 'Por: ' : ''}R$ {product.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-1.5 md:gap-2">
             <Link
               to={`/produto/${product.id}`}
-              className="text-center py-2.5 border border-brand-dark text-brand-dark rounded-lg text-xs font-bold hover:bg-brand-bg transition-colors uppercase tracking-wider"
+              className="text-center py-1.5 md:py-2.5 border border-brand-dark text-brand-dark rounded-lg text-[10px] md:text-xs font-bold hover:bg-brand-bg transition-colors uppercase tracking-wider truncate px-1"
             >
               Detalhes
             </Link>
             <button
               onClick={() => addToCart(product)}
-              className="bg-brand-primary text-white py-2.5 rounded-lg text-xs font-bold hover:bg-brand-dark transition-colors flex items-center justify-center space-x-2 uppercase tracking-wider"
+              className="bg-brand-primary text-white py-1.5 md:py-2.5 rounded-lg text-[10px] md:text-xs font-bold hover:bg-brand-dark transition-colors flex items-center justify-center space-x-1 md:space-x-2 uppercase tracking-wider truncate px-1"
             >
-              <ShoppingCart size={16} />
+              <ShoppingCart size={14} className="md:w-4 md:h-4" />
               <span>Comprar</span>
             </button>
           </div>
@@ -602,7 +633,7 @@ const ProductsPage = () => {
       </div>
 
       {filteredProducts.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {filteredProducts.map(product => (
             <ProductCard key={product.id} product={product} />
           ))}
@@ -644,7 +675,7 @@ const OffersPage = () => {
       </div>
 
       {products.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {products.map(product => (
             <ProductCard key={product.id} product={product} />
           ))}
@@ -711,12 +742,6 @@ const ProductDetailPage = () => {
           <div>
             <div className="text-brand-primary font-bold text-sm uppercase tracking-widest mb-2">{product.category}</div>
             <h1 className="text-4xl font-black text-brand-dark leading-tight uppercase">{product.name}</h1>
-            <div className="flex items-center mt-4 space-x-4">
-              <div className="flex text-yellow-400">
-                {[...Array(5)].map((_, i) => <Star key={i} size={18} className="fill-current" />)}
-              </div>
-              <span className="text-gray-400 text-sm font-medium">(4.9 de 5.0)</span>
-            </div>
           </div>
 
           <div className="flex flex-col">
@@ -751,13 +776,10 @@ const ProductDetailPage = () => {
           <div className="flex space-x-4">
             <button
               onClick={() => addToCart(product)}
-              className="flex-1 bg-brand-primary hover:bg-brand-dark text-white py-5 rounded-xl font-bold text-lg transition-all shadow-xl shadow-brand-primary/20 flex items-center justify-center space-x-3 uppercase tracking-widest"
+              className="w-full bg-brand-primary hover:bg-brand-dark text-white py-5 rounded-xl font-bold text-lg transition-all shadow-xl shadow-brand-primary/20 flex items-center justify-center space-x-3 uppercase tracking-widest"
             >
               <ShoppingCart size={24} />
               <span>Adicionar ao Carrinho</span>
-            </button>
-            <button className="p-5 border border-gray-200 rounded-xl hover:bg-brand-bg transition-colors group">
-              <Star size={24} className="text-gray-300 group-hover:text-yellow-400 transition-colors" />
             </button>
           </div>
         </div>
@@ -839,15 +861,18 @@ const CartPage = () => {
               <span>Subtotal</span>
               <span>R$ {totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
-            <div className="flex justify-between text-gray-600 font-medium">
-              <span>Frete (Fortim)</span>
-              <span className="text-brand-primary font-bold uppercase text-xs">Grátis</span>
-            </div>
             <div className="border-t border-brand-primary/10 pt-4 flex justify-between text-2xl font-black text-brand-dark">
               <span>Total</span>
               <span>R$ {totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
           </div>
+          
+          <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
+            <p className="text-[10px] text-amber-800 font-bold uppercase leading-relaxed text-center">
+              <span className="text-amber-600">ENTREGAS:</span> As condições de entrega para o Fortim devem ser combinadas diretamente com nosso vendedor da loja. Entre em contato conosco para verificar a disponibilidade.
+            </p>
+          </div>
+
           <button 
             onClick={handleCheckout}
             className="w-full bg-brand-primary hover:bg-brand-dark text-white py-5 rounded-xl font-bold text-lg transition-all shadow-xl shadow-brand-primary/20 flex items-center justify-center space-x-3 uppercase tracking-widest"
@@ -1027,7 +1052,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
   const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, path: '/admin' },
     { name: 'Produtos', icon: Package, path: '/admin/produtos' },
-    { name: 'Usuários', icon: Users, path: '/admin/usuarios', adminOnly: true },
+    { name: 'Usuários', icon: Users, path: '/admin/usuarios' },
   ];
 
   const handleLogout = async () => {
@@ -1041,16 +1066,25 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
       <aside className="w-full md:w-64 bg-brand-dark text-white flex flex-col">
         <div className="p-6 border-b border-brand-primary/20">
           <Link to="/" className="flex items-center">
-            <img src="/static/img/logo.png" alt="FORTIMAX" className="h-10 brightness-0 invert" onError={e => (e.target as any).src = "/static/img/logo_padrao.png"} />
+            <img src="/img/logo.png" alt="FORTIMAX" className="h-10 brightness-0 invert" onError={e => (e.target as any).src = "/static/img/logo_padrao.png"} />
           </Link>
           <div className="mt-4">
             <p className="text-xs font-bold text-brand-light uppercase tracking-widest">Olá, {user?.nome}</p>
-            <p className="text-[10px] text-brand-light/60 uppercase">{user?.nivel === 'administrador' ? 'Administrador' : 'Gerente'}</p>
+            <p className="text-[10px] text-brand-light/60 uppercase">
+              {user?.nivel === 'admin' ? 'Administrador' : user?.nivel === 'gerente' ? 'Gerente' : 'Vendedor'}
+            </p>
           </div>
         </div>
         <nav className="flex-grow p-4 space-y-2">
           {menuItems.map(item => {
-            if (item.adminOnly && user?.nivel !== 'administrador') return null;
+            // VENDEDOR only sees Products
+            if (user?.nivel === 'vendedor' && item.name !== 'Produtos') return null;
+            
+            // GERENTE sees Dashboard and Products
+            if (user?.nivel === 'gerente' && item.name === 'Usuários') return null;
+            
+            // ADMIN sees everything
+            
             const active = location.pathname === item.path;
             return (
               <Link 
@@ -1087,18 +1121,64 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    fetch('/api/admin/stats').then(res => res.json()).then(setStats);
-  }, []);
+    if (!user) return;
+    
+    if (user.nivel === 'vendedor') {
+      navigate('/admin/produtos');
+      return;
+    }
 
-  if (!stats) return <div>Carregando...</div>;
+    setLoading(true);
+    fetch('/api/admin/stats')
+      .then(async res => {
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.error || `Erro ${res.status}: ${res.statusText}`);
+        }
+        return res.json();
+      })
+      .then(setStats)
+      .catch(err => {
+        console.error('Detalhe do erro:', err.message);
+        setError(err.message);
+      })
+      .finally(() => setLoading(false));
+  }, [user, navigate]);
+
+  const [error, setError] = useState<string | null>(null);
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary"></div>
+      <span className="ml-3 font-bold text-brand-dark uppercase tracking-widest">Carregando...</span>
+    </div>
+  );
+
+  if (error) return (
+    <div className="p-8 bg-red-50 text-red-600 rounded-2xl font-bold uppercase tracking-widest text-center border border-red-100">
+      <p>Erro ao carregar estatísticas</p>
+      <p className="text-xs mt-2 opacity-70">Detalhe: {error}</p>
+      <button 
+        onClick={() => window.location.reload()}
+        className="mt-4 px-6 py-2 bg-red-600 text-white rounded-xl text-xs hover:bg-red-700 transition-colors"
+      >
+        Tentar Novamente
+      </button>
+    </div>
+  );
+
+  if (!stats) return null;
 
   const cards = [
     { name: 'Total de Produtos', value: stats.totalProducts, icon: Package, color: 'text-blue-600', bg: 'bg-blue-50' },
     { name: 'Produtos Ativos', value: stats.activeProducts, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
-    { name: 'Ofertas Ativas', value: stats.offersCount, icon: Tag, color: 'text-red-600', bg: 'bg-red-50' },
-    { name: 'Usuários', value: stats.usersCount, icon: Users, color: 'text-purple-600', bg: 'bg-purple-50' },
+    { name: 'Ofertas Ativas', value: stats.offersCount, icon: Tag, color: 'text-red-600', bg: 'bg-red-50', restricted: true },
+    { name: 'Usuários', value: stats.usersCount, icon: Users, color: 'text-purple-600', bg: 'bg-purple-50', adminOnly: true },
   ];
 
   return (
@@ -1106,24 +1186,28 @@ const AdminDashboard = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-black text-brand-dark uppercase">Dashboard</h1>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {cards.map((card, idx) => (
-          <motion.div 
-            key={idx}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.1 }}
-            className="bg-white p-8 rounded-3xl shadow-sm border border-brand-primary/5 flex items-center space-x-6"
-          >
-            <div className={`${card.bg} ${card.color} p-4 rounded-2xl`}>
-              <card.icon size={32} />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{card.name}</p>
-              <p className="text-3xl font-black text-brand-dark">{card.value}</p>
-            </div>
-          </motion.div>
-        ))}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {cards.map((card, idx) => {
+          if (card.adminOnly && user?.nivel !== 'admin') return null;
+          if (card.restricted && user?.nivel === 'vendedor') return null;
+          return (
+            <motion.div 
+              key={idx}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.1 }}
+              className="bg-white p-8 rounded-3xl shadow-sm border border-brand-primary/5 flex items-center space-x-6"
+            >
+              <div className={`${card.bg} ${card.color} p-4 rounded-2xl`}>
+                <card.icon size={32} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{card.name}</p>
+                <p className="text-3xl font-black text-brand-dark">{card.value}</p>
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );
@@ -1137,6 +1221,7 @@ const AdminProducts = () => {
     name: '', category: 'Material de Construção', price: '', oldPrice: '', oferta: false, description: '', stock: '', featured: false, active: true
   });
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+  const { user } = useAuth();
 
   const fetchProducts = () => {
     fetch('/api/admin/products').then(res => res.json()).then(setProducts);
@@ -1198,7 +1283,8 @@ const AdminProducts = () => {
       </div>
 
       <div className="bg-white rounded-3xl shadow-sm border border-brand-primary/5 overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-brand-bg/50 text-brand-dark text-xs font-black uppercase tracking-widest">
               <tr>
@@ -1234,6 +1320,38 @@ const AdminProducts = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile Cards */}
+        <div className="md:hidden divide-y divide-gray-100">
+          {products.map(p => (
+            <div key={p.id} className="p-4 flex flex-col space-y-3">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center space-x-3">
+                  <img src={p.images[0]} className="w-12 h-12 rounded-xl object-cover bg-brand-bg" onError={e => (e.target as any).src = "https://via.placeholder.com/100"} />
+                  <div>
+                    <h3 className="font-bold text-brand-dark leading-tight">{p.name}</h3>
+                    <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1">{p.category}</p>
+                  </div>
+                </div>
+                <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${p.active ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                  {p.active ? 'Ativo' : 'Inativo'}
+                </span>
+              </div>
+              
+              <div className="flex items-center justify-between pt-2">
+                <div>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase">Preço</p>
+                  <p className="font-black text-brand-primary text-lg">R$ {p.price.toFixed(2)}</p>
+                  <p className="text-[10px] text-gray-500 font-medium">Estoque: {p.stock} un</p>
+                </div>
+                <div className="flex space-x-2">
+                  <button onClick={() => handleEdit(p)} className="p-3 bg-blue-50 text-blue-600 rounded-xl transition-colors"><Edit size={20} /></button>
+                  <button onClick={() => handleDelete(p.id)} className="p-3 bg-red-50 text-red-600 rounded-xl transition-colors"><Trash2 size={20} /></button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Modal */}
@@ -1244,66 +1362,72 @@ const AdminProducts = () => {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-8"
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"
             >
-              <div className="flex justify-between items-center mb-8">
+              <div className="p-8 border-b border-gray-100 flex justify-between items-center">
                 <h2 className="text-2xl font-black text-brand-dark uppercase">{editingProduct ? 'Editar Produto' : 'Novo Produto'}</h2>
                 <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-brand-dark"><X size={28} /></button>
               </div>
-              <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-brand-dark uppercase tracking-wider">Nome do Produto</label>
-                  <input required type="text" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-primary focus:outline-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-brand-dark uppercase tracking-wider">Categoria</label>
-                  <select className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-primary focus:outline-none" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
-                    <option>Material de Construção</option>
-                    <option>Hidráulico</option>
-                    <option>Elétrico</option>
-                    <option>Tintas</option>
-                    <option>Ferragens</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-brand-dark uppercase tracking-wider">Preço (R$)</label>
-                  <input required type="number" step="0.01" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-primary focus:outline-none" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-brand-dark uppercase tracking-wider">Preço Antigo (Opcional)</label>
-                  <input type="number" step="0.01" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-primary focus:outline-none" value={formData.oldPrice} onChange={e => setFormData({...formData, oldPrice: e.target.value})} />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-brand-dark uppercase tracking-wider">Estoque</label>
-                  <input required type="number" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-primary focus:outline-none" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-brand-dark uppercase tracking-wider">Imagens</label>
-                  <input type="file" multiple className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-primary focus:outline-none" onChange={e => setSelectedFiles(e.target.files)} />
-                </div>
-                <div className="md:col-span-2 space-y-2">
-                  <label className="text-xs font-black text-brand-dark uppercase tracking-wider">Descrição</label>
-                  <textarea rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-primary focus:outline-none" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}></textarea>
-                </div>
-                <div className="flex flex-wrap gap-6 md:col-span-2">
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input type="checkbox" className="w-5 h-5 text-brand-primary rounded" checked={formData.oferta} onChange={e => setFormData({...formData, oferta: e.target.checked})} />
-                    <span className="text-xs font-black text-brand-dark uppercase tracking-wider">Oferta</span>
-                  </label>
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input type="checkbox" className="w-5 h-5 text-brand-primary rounded" checked={formData.featured} onChange={e => setFormData({...formData, featured: e.target.checked})} />
-                    <span className="text-xs font-black text-brand-dark uppercase tracking-wider">Destaque</span>
-                  </label>
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input type="checkbox" className="w-5 h-5 text-brand-primary rounded" checked={formData.active} onChange={e => setFormData({...formData, active: e.target.checked})} />
-                    <span className="text-xs font-black text-brand-dark uppercase tracking-wider">Ativo</span>
-                  </label>
-                </div>
-                <div className="md:col-span-2 flex justify-end space-x-4 mt-6">
-                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-8 py-4 border border-gray-200 rounded-xl font-bold text-gray-500 hover:bg-gray-50 uppercase tracking-widest text-xs">Cancelar</button>
-                  <button type="submit" className="px-10 py-4 bg-brand-primary text-white rounded-xl font-bold hover:bg-brand-dark shadow-xl shadow-brand-primary/20 uppercase tracking-widest text-xs">Salvar Produto</button>
-                </div>
-              </form>
+              
+              <div className="flex-grow overflow-y-auto p-8 pb-24 md:pb-8">
+                <form id="productForm" onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-brand-dark uppercase tracking-wider">Nome do Produto</label>
+                    <input required type="text" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-primary focus:outline-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-brand-dark uppercase tracking-wider">Categoria</label>
+                    <select className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-primary focus:outline-none" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+                      <option>Material de Construção</option>
+                      <option>Hidráulico</option>
+                      <option>Elétrico</option>
+                      <option>Tintas</option>
+                      <option>Ferragens</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-brand-dark uppercase tracking-wider">Preço (R$)</label>
+                    <input required type="number" step="0.01" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-primary focus:outline-none" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-brand-dark uppercase tracking-wider">Preço Antigo (Opcional)</label>
+                    <input type="number" step="0.01" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-primary focus:outline-none" value={formData.oldPrice} onChange={e => setFormData({...formData, oldPrice: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-brand-dark uppercase tracking-wider">Estoque</label>
+                    <input required type="number" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-primary focus:outline-none" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-brand-dark uppercase tracking-wider">Imagens</label>
+                    <input type="file" multiple className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-primary focus:outline-none" onChange={e => setSelectedFiles(e.target.files)} />
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-xs font-black text-brand-dark uppercase tracking-wider">Descrição</label>
+                    <textarea rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-primary focus:outline-none" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}></textarea>
+                  </div>
+                  <div className="flex flex-wrap gap-6 md:col-span-2">
+                    {(user?.nivel === 'admin' || user?.nivel === 'gerente') && (
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" className="w-5 h-5 text-brand-primary rounded" checked={formData.oferta} onChange={e => setFormData({...formData, oferta: e.target.checked})} />
+                        <span className="text-xs font-black text-brand-dark uppercase tracking-wider">Oferta</span>
+                      </label>
+                    )}
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input type="checkbox" className="w-5 h-5 text-brand-primary rounded" checked={formData.featured} onChange={e => setFormData({...formData, featured: e.target.checked})} />
+                      <span className="text-xs font-black text-brand-dark uppercase tracking-wider">Destaque</span>
+                    </label>
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input type="checkbox" className="w-5 h-5 text-brand-primary rounded" checked={formData.active} onChange={e => setFormData({...formData, active: e.target.checked})} />
+                      <span className="text-xs font-black text-brand-dark uppercase tracking-wider">Ativo</span>
+                    </label>
+                  </div>
+                </form>
+              </div>
+
+              <div className="p-8 border-t border-gray-100 bg-gray-50 flex justify-end space-x-4">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-8 py-4 border border-gray-200 rounded-xl font-bold text-gray-500 hover:bg-gray-50 uppercase tracking-widest text-xs">Cancelar</button>
+                <button form="productForm" type="submit" className="px-10 py-4 bg-brand-primary text-white rounded-xl font-bold hover:bg-brand-dark shadow-xl shadow-brand-primary/20 uppercase tracking-widest text-xs">Salvar Produto</button>
+              </div>
             </motion.div>
           </div>
         )}
@@ -1314,17 +1438,56 @@ const AdminProducts = () => {
 
 const AdminUsers = () => {
   const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({ nome: '', usuario: '', senha: '', nivel: 'gerente', ativo: true });
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [formData, setFormData] = useState<any>({
+    nome: '', usuario: '', email: '', senha: '', nivel: 'vendedor', ativo: true
+  });
   const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
 
   const fetchUsers = () => {
-    fetch('/api/admin/users').then(res => res.json()).then(setUsers);
+    setLoading(true);
+    setError(null);
+    fetch('/api/admin/users')
+      .then(async res => {
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.error || `Erro ${res.status}: ${res.statusText}`);
+        }
+        return res.json();
+      })
+      .then(setUsers)
+      .catch(err => {
+        console.error('Erro ao carregar dados:', err.message);
+        setError(err.message);
+      })
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => {
+    if (!currentUser) return;
+
+    if (currentUser.nivel !== 'admin') {
+      navigate('/admin/produtos');
+      return;
+    }
     fetchUsers();
-  }, []);
+  }, [currentUser, navigate]);
+
+  const handleEdit = (user: User) => {
+    setEditingUser(user);
+    setFormData({
+      nome: user.nome,
+      usuario: user.usuario,
+      email: user.email || '',
+      senha: '', // Don't populate password
+      nivel: user.nivel,
+      ativo: user.ativo
+    });
+    setIsModalOpen(true);
+  };
 
   const handleDelete = async (id: number) => {
     if (id === currentUser?.id) return alert('Você não pode remover a si mesmo!');
@@ -1336,14 +1499,19 @@ const AdminUsers = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch('/api/admin/users', {
-      method: 'POST',
+    const url = editingUser ? `/api/admin/users/${editingUser.id}` : '/api/admin/users';
+    const method = editingUser ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(formData)
     });
+
     if (res.ok) {
       setIsModalOpen(false);
-      setFormData({ nome: '', usuario: '', senha: '', nivel: 'gerente', ativo: true });
+      setEditingUser(null);
+      setFormData({ nome: '', usuario: '', email: '', senha: '', nivel: 'vendedor', ativo: true });
       fetchUsers();
     } else {
       const err = await res.json();
@@ -1351,12 +1519,38 @@ const AdminUsers = () => {
     }
   };
 
+  const [error, setError] = useState<string | null>(null);
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary"></div>
+      <span className="ml-3 font-bold text-brand-dark uppercase tracking-widest">Carregando...</span>
+    </div>
+  );
+
+  if (error) return (
+    <div className="p-8 bg-red-50 text-red-600 rounded-2xl font-bold uppercase tracking-widest text-center border border-red-100">
+      <p>Erro ao carregar usuários</p>
+      <p className="text-xs mt-2 opacity-70">Detalhe: {error}</p>
+      <button 
+        onClick={() => fetchUsers()}
+        className="mt-4 px-6 py-2 bg-red-600 text-white rounded-xl text-xs hover:bg-red-700 transition-colors"
+      >
+        Tentar Novamente
+      </button>
+    </div>
+  );
+
   return (
     <div className="space-y-10">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-black text-brand-dark uppercase">Usuários</h1>
         <button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setEditingUser(null);
+            setFormData({ nome: '', usuario: '', email: '', senha: '', nivel: 'vendedor', ativo: true });
+            setIsModalOpen(true);
+          }}
           className="bg-brand-primary text-white px-6 py-3 rounded-xl font-bold flex items-center space-x-2 hover:bg-brand-dark transition-all uppercase tracking-widest text-sm"
         >
           <PlusCircle size={20} />
@@ -1365,12 +1559,13 @@ const AdminUsers = () => {
       </div>
 
       <div className="bg-white rounded-3xl shadow-sm border border-brand-primary/5 overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-brand-bg/50 text-brand-dark text-xs font-black uppercase tracking-widest">
               <tr>
                 <th className="px-6 py-4">Nome</th>
-                <th className="px-6 py-4">Usuário</th>
+                <th className="px-6 py-4">E-mail</th>
                 <th className="px-6 py-4">Nível</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4 text-right">Ações</th>
@@ -1380,10 +1575,10 @@ const AdminUsers = () => {
               {users.map(u => (
                 <tr key={u.id} className="hover:bg-brand-bg/20 transition-colors">
                   <td className="px-6 py-4 font-bold text-brand-dark">{u.nome}</td>
-                  <td className="px-6 py-4 text-gray-500 font-medium">{u.usuario}</td>
+                  <td className="px-6 py-4 text-gray-500 font-medium">{u.email || '-'}</td>
                   <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${u.nivel === 'administrador' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
-                      {u.nivel === 'administrador' ? 'Administrador' : 'Gerente'}
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${u.nivel === 'admin' ? 'bg-red-100 text-red-600' : u.nivel === 'gerente' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
+                      {u.nivel === 'admin' ? 'Administrador' : u.nivel === 'gerente' ? 'Gerente' : 'Vendedor'}
                     </span>
                   </td>
                   <td className="px-6 py-4">
@@ -1391,13 +1586,46 @@ const AdminUsers = () => {
                       {u.ativo ? 'Ativo' : 'Inativo'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-6 py-4 text-right space-x-2">
+                    <button onClick={() => handleEdit(u)} className="p-2 text-brand-primary hover:bg-brand-primary/10 rounded-lg transition-colors"><Edit size={18} /></button>
                     <button onClick={() => handleDelete(u.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={18} /></button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Cards */}
+        <div className="md:hidden divide-y divide-gray-100">
+          {users.map(u => (
+            <div key={u.id} className="p-4 flex flex-col space-y-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="font-bold text-brand-dark">{u.nome}</h3>
+                  <p className="text-xs text-gray-500 font-medium">{u.email || u.usuario}</p>
+                </div>
+                <div className="flex flex-col items-end space-y-1">
+                  <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${u.nivel === 'admin' ? 'bg-red-100 text-red-600' : u.nivel === 'gerente' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
+                    {u.nivel === 'admin' ? 'Administrador' : u.nivel === 'gerente' ? 'Gerente' : 'Vendedor'}
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${u.ativo ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                    {u.ativo ? 'Ativo' : 'Inativo'}
+                  </span>
+                </div>
+              </div>
+              <div className="flex justify-end space-x-2 pt-2">
+                <button onClick={() => handleEdit(u)} className="p-3 bg-brand-primary/10 text-brand-primary rounded-xl transition-colors flex items-center space-x-2 text-xs font-bold uppercase tracking-widest">
+                  <Edit size={18} />
+                  <span>Editar</span>
+                </button>
+                <button onClick={() => handleDelete(u.id)} className="p-3 bg-red-50 text-red-600 rounded-xl transition-colors flex items-center space-x-2 text-xs font-bold uppercase tracking-widest">
+                  <Trash2 size={18} />
+                  <span>Excluir</span>
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -1412,7 +1640,7 @@ const AdminUsers = () => {
               className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8"
             >
               <div className="flex justify-between items-center mb-8">
-                <h2 className="text-2xl font-black text-brand-dark uppercase">Novo Usuário</h2>
+                <h2 className="text-2xl font-black text-brand-dark uppercase">{editingUser ? 'Editar Usuário' : 'Novo Usuário'}</h2>
                 <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-brand-dark"><X size={28} /></button>
               </div>
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -1421,18 +1649,23 @@ const AdminUsers = () => {
                   <input required type="text" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-primary focus:outline-none" value={formData.nome} onChange={e => setFormData({...formData, nome: e.target.value})} />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-black text-brand-dark uppercase tracking-wider">Usuário</label>
+                  <label className="text-xs font-black text-brand-dark uppercase tracking-wider">E-mail</label>
+                  <input required type="email" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-primary focus:outline-none" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-brand-dark uppercase tracking-wider">Usuário (Login)</label>
                   <input required type="text" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-primary focus:outline-none" value={formData.usuario} onChange={e => setFormData({...formData, usuario: e.target.value})} />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-black text-brand-dark uppercase tracking-wider">Senha Inicial</label>
-                  <input required type="password" title="Mínimo 6 caracteres" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-primary focus:outline-none" value={formData.senha} onChange={e => setFormData({...formData, senha: e.target.value})} />
+                  <label className="text-xs font-black text-brand-dark uppercase tracking-wider">{editingUser ? 'Nova Senha (deixe em branco para manter)' : 'Senha Inicial'}</label>
+                  <input required={!editingUser} type="password" title="Mínimo 6 caracteres" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-primary focus:outline-none" value={formData.senha} onChange={e => setFormData({...formData, senha: e.target.value})} />
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-black text-brand-dark uppercase tracking-wider">Nível de Acesso</label>
                   <select className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-primary focus:outline-none" value={formData.nivel} onChange={e => setFormData({...formData, nivel: e.target.value as any})}>
-                    <option value="gerente">Gerente (Produtos/Ofertas)</option>
-                    <option value="administrador">Administrador (Total)</option>
+                    <option value="vendedor">Vendedor</option>
+                    <option value="gerente">Gerente</option>
+                    <option value="admin">Administrador</option>
                   </select>
                 </div>
                 <div className="flex items-center space-x-2 cursor-pointer">
@@ -1441,7 +1674,7 @@ const AdminUsers = () => {
                 </div>
                 <div className="flex justify-end space-x-4 mt-6">
                   <button type="button" onClick={() => setIsModalOpen(false)} className="px-8 py-4 border border-gray-200 rounded-xl font-bold text-gray-500 hover:bg-gray-50 uppercase tracking-widest text-xs">Cancelar</button>
-                  <button type="submit" className="px-10 py-4 bg-brand-primary text-white rounded-xl font-bold hover:bg-brand-dark shadow-xl shadow-brand-primary/20 uppercase tracking-widest text-xs">Criar Usuário</button>
+                  <button type="submit" className="px-10 py-4 bg-brand-primary text-white rounded-xl font-bold hover:bg-brand-dark shadow-xl shadow-brand-primary/20 uppercase tracking-widest text-xs">{editingUser ? 'Salvar Alterações' : 'Criar Usuário'}</button>
                 </div>
               </form>
             </motion.div>
@@ -1480,9 +1713,13 @@ const AnimatedRoutes = () => {
           <Route path="/login" element={<><Header /><main className="flex-grow"><LoginPage /></main><Footer /><WhatsAppButton /></>} />
 
           {/* Admin Routes (Protected) */}
-          <Route path="/admin" element={user ? <AdminLayout><AdminDashboard /></AdminLayout> : <Navigate to="/login" />} />
+          <Route path="/admin" element={
+            user ? (
+              user.nivel === 'vendedor' ? <Navigate to="/admin/produtos" /> : <AdminLayout><AdminDashboard /></AdminLayout>
+            ) : <Navigate to="/login" />
+          } />
           <Route path="/admin/produtos" element={user ? <AdminLayout><AdminProducts /></AdminLayout> : <Navigate to="/login" />} />
-          <Route path="/admin/usuarios" element={user?.nivel === 'administrador' ? <AdminLayout><AdminUsers /></AdminLayout> : <Navigate to="/admin" />} />
+          <Route path="/admin/usuarios" element={user?.nivel === 'admin' ? <AdminLayout><AdminUsers /></AdminLayout> : <Navigate to="/admin" />} />
           
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" />} />

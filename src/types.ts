@@ -16,7 +16,8 @@ export interface User {
   id: number;
   nome: string;
   usuario: string;
-  nivel: 'administrador' | 'gerente';
+  email?: string;
+  nivel: 'admin' | 'gerente' | 'vendedor';
   ativo: boolean;
 }
 
