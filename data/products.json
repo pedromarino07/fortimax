@@ -1,16 +1,16 @@
 [
   {
     "id": 1,
-    "name": "Cimento CP II-E-32 50kg",
+    "name": "Argamassa AC-II 15kg",
     "category": "Material de Construção",
     "price": 35.90,
     "oldPrice": 39.90,
     "oferta": true,
-    "description": "Cimento Portland de alta qualidade, ideal para obras de pequeno a grande porte. Excelente trabalhabilidade e resistência.",
-    "stock": 500,
+    "description": "Argamassa AC-II 15kg Colamix Cinza Rejuntamix",
+    "stock": 100,
     "images": [
-      "https://picsum.photos/seed/cimento1/600/600",
-      "https://picsum.photos/seed/cimento2/600/600"
+      "https://lojaacal.vtexassets.com/arquivos/ids/227019-1600-auto?v=639015732913100000&width=1600&height=auto&aspect=true",
+      "https://lojaacal.vtexassets.com/arquivos/ids/227020-1600-auto?v=639053805723870000&width=1600&height=auto&aspect=true"
     ],
     "featured": true
   },
