@@ -50,7 +50,7 @@ async function initDb() {
         name VARCHAR(255) NOT NULL,
         category VARCHAR(255) NOT NULL,
         price DECIMAL(10, 2) NOT NULL,
-        oldPrice DECIMAL(10, 2),
+        "oldPrice" DECIMAL(10, 2),
         oferta INTEGER DEFAULT 0,
         description TEXT,
         stock INTEGER DEFAULT 0,
@@ -106,7 +106,7 @@ async function initDb() {
           const initialProducts = JSON.parse(fs.readFileSync(productsPath, 'utf-8'));
           for (const p of initialProducts) {
             await client.query(`
-              INSERT INTO products (name, category, price, oldPrice, oferta, description, stock, images, featured, active)
+              INSERT INTO products (name, category, price, "oldPrice", oferta, description, stock, images, featured, active)
               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             `, [p.name, p.category, p.price, p.oldPrice || null, p.oferta ? 1 : 0, p.description, p.stock, JSON.stringify(p.images), p.featured ? 1 : 0, 1]);
           }
@@ -251,7 +251,11 @@ app.get('/api/products', async (req, res) => {
     
     res.json({
       products: products.map((p: any) => ({ 
-        ...p, 
+        ...p,
+        // Forçamos a leitura da coluna com aspas (usando p['oldPrice'])
+        // Se p['oldPrice'] for undefined, tentamos p.oldprice por segurança
+        oldPrice: p["oldPrice"] !== undefined ? parseFloat(p["oldPrice"]) : (p.oldprice ? parseFloat(p.oldprice) : null),
+        
         images: p.images ? JSON.parse(p.images) : [], 
         oferta: !!p.oferta, 
         featured: !!p.featured, 
