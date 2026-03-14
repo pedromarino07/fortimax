@@ -1,5 +1,5 @@
 {
   "name": "FORTIMAX - Materiais de Construção",
-  "description": "Loja especializada em materiais para construção, hidráulicos, elétricos, tintas e ferragens em Fortim - CE.",
+  "description": "Loja especializada em materiais para construção com backend híbrido (SQLite + PostgreSQL Neon.tech) para migração segura.",
   "requestFramePermissions": []
 }

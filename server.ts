@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import Database from 'better-sqlite3';
+import pg from 'pg';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import cookieParser from 'cookie-parser';
@@ -14,6 +15,24 @@ const __dirname = path.dirname(__filename);
 
 const db = new Database('database.db');
 const JWT_SECRET = process.env.JWT_SECRET || 'fortimax_secret_key_2026';
+
+// --- PostgreSQL (Neon.tech) Configuration ---
+const { Pool } = pg;
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false // Required for Neon.tech
+  }
+});
+
+// Test PostgreSQL connection on startup
+pool.connect((err, client, release) => {
+  if (err) {
+    return console.error('Erro ao conectar ao PostgreSQL (Neon):', err.stack);
+  }
+  console.log('Conexão com PostgreSQL (Neon) estabelecida com sucesso.');
+  release();
+});
 
 // --- Database Initialization ---
 db.exec(`
@@ -139,6 +158,40 @@ const isGerenteOrAdmin = (req: any, res: any, next: any) => {
 };
 
 // --- API Routes ---
+
+// --- PostgreSQL Read-Only API (Migration Phase) ---
+app.get('/api/neon/products', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM products WHERE active = 1');
+    res.json(result.rows.map(p => ({
+      ...p,
+      images: p.images ? JSON.parse(p.images) : [],
+      oferta: !!p.oferta,
+      featured: !!p.featured,
+      active: !!p.active
+    })));
+  } catch (err) {
+    console.error('Erro ao buscar produtos no Neon:', err);
+    res.status(500).json({ error: 'Erro ao conectar com o banco de dados Neon.' });
+  }
+});
+
+app.get('/api/neon/test-connection', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT NOW() as current_time');
+    res.json({ 
+      status: 'success', 
+      message: 'Conexão com Neon.tech funcionando!',
+      time: result.rows[0].current_time 
+    });
+  } catch (err) {
+    console.error('Falha no teste de conexão com Neon:', err);
+    res.status(500).json({ 
+      status: 'error', 
+      message: 'Falha ao conectar com Neon.tech. Verifique sua DATABASE_URL.' 
+    });
+  }
+});
 
 // Public Products with Pagination
 app.get('/api/products', (req, res) => {

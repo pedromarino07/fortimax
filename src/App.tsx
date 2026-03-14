@@ -138,7 +138,17 @@ const Header = () => {
   const { user } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [inicioLabel, setInicioLabel] = useState('INÍCIO');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    fetch('/api/config/LABEL_INICIO')
+      .then(res => res.json())
+      .then(data => {
+        if (data.valor) setInicioLabel(data.valor);
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,7 +166,7 @@ const Header = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20 md:h-24">
           {/* Logo */}
-          <Link to="/" className="flex items-center">
+          <Link to="/" className="flex items-center" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
             <img 
               src="/static/img/logo.png" 
               alt="FORTIMAX" 
@@ -168,11 +178,17 @@ const Header = () => {
           </Link>
 
           {/* Desktop Nav */}
-          <nav className="hidden md:flex space-x-8 font-bold text-gray-700 uppercase text-sm tracking-wide">
-            <Link to="/" className="hover:text-brand-primary transition-colors">Início</Link>
-            <Link to="/produtos" className="hover:text-brand-primary transition-colors">Produtos</Link>
-            <Link to="/ofertas" className="hover:text-brand-primary transition-colors">Ofertas</Link>
-            <Link to="/contato" className="hover:text-brand-primary transition-colors">Contato</Link>
+          <nav className="hidden md:flex space-x-8 font-bold text-gray-700 uppercase text-xs lg:text-sm tracking-wide">
+            <Link 
+              to="/" 
+              className="hover:text-brand-primary transition-colors"
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            >
+              {inicioLabel}
+            </Link>
+            <Link to="/produtos" className="hover:text-brand-primary transition-colors" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>Produtos</Link>
+            <Link to="/ofertas" className="hover:text-brand-primary transition-colors" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>Ofertas</Link>
+            <Link to="/contato" className="hover:text-brand-primary transition-colors" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>Contato</Link>
             {user ? (
               <Link to="/admin" className="text-brand-primary hover:text-brand-dark transition-colors flex items-center space-x-1">
                 <LayoutDashboard size={18} />
@@ -288,19 +304,23 @@ const Header = () => {
               </div>
               
               <nav className="flex-grow p-6 flex flex-col space-y-6 font-bold text-gray-700 uppercase text-lg">
-                <Link to="/" onClick={() => setIsMenuOpen(false)} className="hover:text-brand-primary flex items-center justify-between">
-                  <span>Início</span>
+                <Link 
+                  to="/" 
+                  onClick={() => { setIsMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
+                  className="hover:text-brand-primary flex items-center justify-between"
+                >
+                  <span>{inicioLabel}</span>
                   <ChevronRight size={20} className="text-gray-300" />
                 </Link>
-                <Link to="/produtos" onClick={() => setIsMenuOpen(false)} className="hover:text-brand-primary flex items-center justify-between">
+                <Link to="/produtos" onClick={() => { setIsMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="hover:text-brand-primary flex items-center justify-between">
                   <span>Produtos</span>
                   <ChevronRight size={20} className="text-gray-300" />
                 </Link>
-                <Link to="/ofertas" onClick={() => setIsMenuOpen(false)} className="hover:text-brand-primary flex items-center justify-between">
+                <Link to="/ofertas" onClick={() => { setIsMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="hover:text-brand-primary flex items-center justify-between">
                   <span>Ofertas</span>
                   <ChevronRight size={20} className="text-gray-300" />
                 </Link>
-                <Link to="/contato" onClick={() => setIsMenuOpen(false)} className="hover:text-brand-primary flex items-center justify-between">
+                <Link to="/contato" onClick={() => { setIsMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="hover:text-brand-primary flex items-center justify-between">
                   <span>Contato</span>
                   <ChevronRight size={20} className="text-gray-300" />
                 </Link>
@@ -618,7 +638,7 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
                 De: R$ {product.oldPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </span>
             )}
-            <div className="text-lg md:text-2xl font-black text-brand-dark">
+            <div className="price-fluid font-black text-brand-dark">
               {product.oldPrice ? 'Por: ' : ''}R$ {product.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
           </div>
@@ -662,22 +682,25 @@ const ProductsPage = () => {
 
   useEffect(() => {
     const params = new URLSearchParams();
-    if (activeCategory !== 'Todos') params.append('category', activeCategory);
+    if (activeCategory !== 'Todos') {
+      const cat = dbCategories.find(c => c.name === activeCategory);
+      if (cat) params.append('categoryId', cat.id.toString());
+    }
     if (searchTerm) params.append('search', searchTerm);
     params.append('page', currentPage.toString());
     params.append('limit', '40');
 
-    fetch(`/api/products?${params.toString()}`)
+    fetch(`/api/produtos?${params.toString()}`)
       .then(res => res.json())
       .then(data => {
-        setProducts(data.products);
+        setProducts(data.produtos);
         setTotalPages(data.pagination.totalPages);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       });
-  }, [activeCategory, searchTerm, currentPage]);
+  }, [activeCategory, searchTerm, currentPage, dbCategories]);
 
   useEffect(() => {
-    fetch('/api/categories')
+    fetch('/api/categorias')
       .then(res => res.json())
       .then(data => setDbCategories(data));
   }, []);
@@ -817,23 +840,26 @@ const OffersPage = () => {
 
   useEffect(() => {
     const params = new URLSearchParams();
-    if (activeCategory !== 'Todos') params.append('category', activeCategory);
+    if (activeCategory !== 'Todos') {
+      const cat = dbCategories.find(c => c.name === activeCategory);
+      if (cat) params.append('categoryId', cat.id.toString());
+    }
     if (searchTerm) params.append('search', searchTerm);
     params.append('page', currentPage.toString());
     params.append('limit', '40');
     params.append('onlyOffers', 'true');
 
-    fetch(`/api/products?${params.toString()}`)
+    fetch(`/api/produtos?${params.toString()}`)
       .then(res => res.json())
       .then(data => {
-        setProducts(data.products);
+        setProducts(data.produtos);
         setTotalPages(data.pagination.totalPages);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       });
-  }, [activeCategory, searchTerm, currentPage]);
+  }, [activeCategory, searchTerm, currentPage, dbCategories]);
 
   useEffect(() => {
-    fetch('/api/categories')
+    fetch('/api/categorias')
       .then(res => res.json())
       .then(data => setDbCategories(data));
   }, []);
@@ -963,12 +989,26 @@ const ProductDetailPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch(`/api/products/${id}`)
+    fetch(`/api/produtos/${id}`)
       .then(res => {
         if (!res.ok) throw new Error();
         return res.json();
       })
-      .then(data => setProduct(data))
+      .then(data => {
+        // Adapt backend fields to frontend interface if necessary
+        const adaptedProduct = {
+          ...data,
+          price: parseFloat(data.preco_oferta || data.preco_base),
+          oldPrice: data.preco_oferta ? parseFloat(data.preco_base) : null,
+          images: data.imagem_url ? [data.imagem_url] : ['/static/img/logo_padrao.png'],
+          category: data.categoria_nome,
+          oferta: data.em_oferta,
+          stock: data.estoque,
+          name: data.nome,
+          description: data.descricao
+        };
+        setProduct(adaptedProduct);
+      })
       .catch(() => navigate('/produtos'));
   }, [id, navigate]);
 
@@ -1059,7 +1099,7 @@ const CartPage = () => {
   const handleCheckout = async () => {
     try {
       // Deduct stock in backend
-      const res = await fetch('/api/checkout', {
+      const res = await fetch('/api/finalizar-pedido', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items: cart.map(i => ({ id: i.id, quantity: i.quantity })) })
@@ -1072,13 +1112,16 @@ const CartPage = () => {
       }
 
       const phoneNumber = '5588988253050';
-      let message = 'Olá, gostaria de fazer um pedido.\n\nProdutos selecionados:\n';
+      let message = '*NOVO PEDIDO - FORTIMAX*\n\n';
+      message += 'Olá, gostaria de fazer um pedido.\n\n';
+      message += '*PRODUTOS SELECIONADOS:*\n';
       
       cart.forEach(item => {
-        message += `- ${item.quantity}x ${item.name}\n`;
+        message += `✅ ${item.quantity}x ${item.name} - R$ ${(item.price * item.quantity).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
       });
 
-      message += `\nTotal aproximado: R$ ${totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n\nPoderia confirmar disponibilidade?`;
+      message += `\n*TOTAL ESTIMADO: R$ ${totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n\n`;
+      message += '_Poderia confirmar a disponibilidade e o frete para minha região?_';
 
       const encodedMessage = encodeURIComponent(message);
       const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
