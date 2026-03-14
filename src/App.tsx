@@ -567,7 +567,7 @@ const HomePage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
           <div className="rounded-3xl overflow-hidden shadow-2xl relative group">
             <img
-              src="https://picsum.photos/seed/fortimax-store/800/600"
+              src="/img/fortimax.png"
               alt="Sobre a Fortimax"
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               referrerPolicy="no-referrer"
@@ -612,7 +612,7 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
       }
       return imagesData[0]; // Se já for um array, retorna o primeiro
     } catch (e) {
-      return "/static/img/logo_padrao.png"; // Fallback se o JSON estiver corrompido
+      return "/img/logo.png"; // Fallback se o JSON estiver corrompido
     }
   };
 
@@ -646,7 +646,7 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
               </span>
             )}
             <div className="price-fluid font-black text-brand-dark">
-              {product.oldPrice ? 'Por: ' : ''}R$ {product.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              <p>R$ {product.price ? Number(product.price).toFixed(2) : "0.00"}</p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-1.5 md:gap-2">
@@ -1021,7 +1021,7 @@ const ProductDetailPage = () => {
           ...data,
           price: parseFloat(data.preco_oferta || data.preco_base),
           oldPrice: data.preco_oferta ? parseFloat(data.preco_base) : null,
-          images: data.imagem_url ? [data.imagem_url] : ['/static/img/logo.png'],
+          images: data.imagem_url ? [data.imagem_url] : ['/img/logo.png'],
           category: data.categoria_nome,
           oferta: data.em_oferta,
           stock: data.estoque,
@@ -1077,7 +1077,7 @@ const ProductDetailPage = () => {
               </span>
             )}
             <div className="text-3xl md:text-5xl font-black text-brand-dark tracking-tighter">
-              {product.oldPrice ? 'Por: ' : ''}R$ {product.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              <p>R$ {product.price ? Number(product.price).toFixed(2) : "0.00"}</p>
             </div>
           </div>
 
@@ -1417,7 +1417,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
       <aside className="w-full md:w-64 bg-brand-dark text-white flex flex-col">
         <div className="p-6 border-b border-brand-primary/20">
           <Link to="/" className="flex items-center">
-            <img src="/static/img/logo.png" alt="FORTIMAX" className="h-10 brightness-0 invert" />
+            <img src="/img/logo.png" alt="FORTIMAX" className="h-10 brightness-0 invert" />
           </Link>
           <div className="mt-4">
             <p className="text-xs font-bold text-brand-light uppercase tracking-widest">Olá, {user?.nome}</p>
