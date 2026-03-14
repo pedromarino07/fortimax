@@ -855,9 +855,20 @@ const OffersPage = () => {
     fetch(`/api/products?${params.toString()}`)
       .then(res => res.json())
       .then(data => {
-        setProducts(data.produtos);
-        setTotalPages(data.pagination.totalPages);
+        // CORREÇÃO: Mude de data.produtos para data.products
+        console.log("DEBUG API OFERTAS:", data); // Isso ajudará a ver o que chega
+        
+        // Se 'data.products' não existir, usamos um array vazio para não quebrar o .map()
+        setProducts(data.products || []); 
+        
+        // Verifique se o pagination existe para evitar erro
+        setTotalPages(data.pagination?.totalPages || 1);
+        
         window.scrollTo({ top: 0, behavior: 'smooth' });
+      })
+      .catch(err => {
+        console.error("Erro ao buscar ofertas:", err);
+        setProducts([]); // Garante que a tela não quebre se a API falhar
       });
   }, [activeCategory, searchTerm, currentPage, dbCategories]);
 
