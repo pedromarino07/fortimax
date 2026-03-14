@@ -168,12 +168,9 @@ const Header = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
             <img 
-              src="/static/img/logo.png" 
+              src="/img/logo.png" 
               alt="FORTIMAX" 
               className="h-10 md:h-14 w-auto"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = "/static/img/logo_padrao.png";
-              }}
             />
           </Link>
 
@@ -356,12 +353,9 @@ const Footer = () => {
           <div className="space-y-4">
             <Link to="/" className="flex items-center">
               <img 
-                src="/static/img/logo.png" 
+                src="/img/logo.png" 
                 alt="FORTIMAX" 
                 className="logo brightness-0 invert"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = "/static/img/logo_padrao.png";
-                }}
               />
             </Link>
             <p className="text-brand-light/80 text-sm leading-relaxed">
@@ -497,7 +491,7 @@ const HomePage = () => {
       {/* Hero Banner */}
       <section className="relative h-[400px] md:h-[500px] overflow-hidden">
         <img
-          src="https://picsum.photos/seed/fortimax-banner/1920/1080"
+          src="/img/fortimax.png"
           alt="Banner FORTIMAX"
           className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
@@ -633,9 +627,6 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
           alt={product.name}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           referrerPolicy="no-referrer"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = "/static/img/logo_padrao.png";
-          }}
         />
         {product.oferta && (
           <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-red-600 text-white text-[8px] md:text-[10px] font-black px-2 py-1 md:px-3 md:py-1.5 rounded-full shadow-xl animate-pulse uppercase tracking-widest border border-white/20">
@@ -1030,7 +1021,7 @@ const ProductDetailPage = () => {
           ...data,
           price: parseFloat(data.preco_oferta || data.preco_base),
           oldPrice: data.preco_oferta ? parseFloat(data.preco_base) : null,
-          images: data.imagem_url ? [data.imagem_url] : ['/static/img/logo_padrao.png'],
+          images: data.imagem_url ? [data.imagem_url] : ['/static/img/logo.png'],
           category: data.categoria_nome,
           oferta: data.em_oferta,
           stock: data.estoque,
@@ -1426,7 +1417,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
       <aside className="w-full md:w-64 bg-brand-dark text-white flex flex-col">
         <div className="p-6 border-b border-brand-primary/20">
           <Link to="/" className="flex items-center">
-            <img src="/static/img/logo.png" alt="FORTIMAX" className="h-10 brightness-0 invert" onError={e => (e.target as any).src = "/static/img/logo_padrao.png"} />
+            <img src="/static/img/logo.png" alt="FORTIMAX" className="h-10 brightness-0 invert" />
           </Link>
           <div className="mt-4">
             <p className="text-xs font-bold text-brand-light uppercase tracking-widest">Olá, {user?.nome}</p>
