@@ -419,10 +419,10 @@ app.post('/api/admin/products', authenticate, upload.array('images'), async (req
     const images = files.map(f => `/static/img/produtos/${f.filename}`);
     
     const result = await pool.query(`
-      INSERT INTO products (name, category, price, oldPrice, oferta, description, stock, images, featured, active)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      RETURNING id
-    `, [name, category, price, oldPrice || null, oferta === 'true' ? 1 : 0, description, stock, JSON.stringify(images), featured === 'true' ? 1 : 0, active === 'true' ? 1 : 0]);
+       INSERT INTO products (name, category, price, "oldPrice", oferta, description, stock, images, featured, active)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING id
+      `, [name, category, price, oldPrice || null, oferta === 'true' ? 1 : 0, description, stock, JSON.stringify(images), featured === 'true' ? 1 : 0, active === 'true' ? 1 : 0]);
     
     res.json({ id: result.rows[0].id });
   } catch (err) {
@@ -446,9 +446,19 @@ app.put('/api/admin/products/:id', authenticate, upload.array('images'), async (
     }
 
     await pool.query(`
-      UPDATE products SET name = $1, category = $2, price = $3, oldPrice = $4, oferta = $5, description = $6, stock = $7, images = $8, featured = $9, active = $10
-      WHERE id = $11
-    `, [name, category, price, oldPrice || null, oferta === 'true' ? 1 : 0, description, stock, JSON.stringify(images), featured === 'true' ? 1 : 0, active === 'true' ? 1 : 0, req.params.id]);
+    UPDATE products SET 
+      name = $1, 
+      category = $2, 
+      price = $3, 
+      "oldPrice" = $4,  -- AQUI: aspas duplas no nome da coluna
+      oferta = $5, 
+      description = $6, 
+      stock = $7, 
+      images = $8, 
+      featured = $9, 
+      active = $10
+    WHERE id = $11
+  `, [name, category, price, oldPrice || null, oferta === 'true' ? 1 : 0, description, stock, JSON.stringify(images), featured === 'true' ? 1 : 0, active === 'true' ? 1 : 0, req.params.id]);
     
     res.json({ message: 'Produto atualizado' });
   } catch (err) {
