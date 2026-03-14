@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useParams, u
 import { ShoppingCart, Search, Menu, X, Phone, Mail, MapPin, Facebook, Instagram, Twitter, ChevronRight, Trash2, Plus, Minus, Clock, LayoutDashboard, Package, Tag, Users, LogOut, LogIn, PlusCircle, Edit, CheckCircle, XCircle, Filter, ChevronDown, ChevronLeft, List } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Product, CartItem, User, Category } from './types';
-import ProductCard from './productcard';
 
 // --- Contexts ---
 
@@ -604,6 +603,79 @@ const HomePage = () => {
         </div>
       </section>
     </div>
+  );
+};
+
+const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
+  const { addToCart } = useCart();
+
+  // Lógica para tratar o campo images que vem como string JSON do SQLite
+  const getImageUrl = (imagesData: any) => {
+    try {
+      if (typeof imagesData === 'string') {
+        const parsed = JSON.parse(imagesData); // Converte '["..."]' em um array real
+        return parsed[0];
+      }
+      return imagesData[0]; // Se já for um array, retorna o primeiro
+    } catch (e) {
+      return "/static/img/logo_padrao.png"; // Fallback se o JSON estiver corrompido
+    }
+  };
+
+  return (
+    <motion.div
+      whileHover={{ y: -5 }}
+      className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden group flex flex-col h-full hover:shadow-xl transition-all"
+    >
+      <Link to={`/produto/${product.id}`} className="relative h-48 md:h-64 overflow-hidden block">
+        <img
+          src={getImageUrl(product.images)}
+          alt={product.name}
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          referrerPolicy="no-referrer"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = "/static/img/logo_padrao.png";
+          }}
+        />
+        {product.oferta && (
+          <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-red-600 text-white text-[8px] md:text-[10px] font-black px-2 py-1 md:px-3 md:py-1.5 rounded-full shadow-xl animate-pulse uppercase tracking-widest border border-white/20">
+            PROMOÇÃO
+          </div>
+        )}
+      </Link>
+      <div className="p-4 md:p-6 flex flex-col flex-grow">
+        <Link to={`/produto/${product.id}`} className="font-bold text-brand-dark hover:text-brand-primary transition-colors line-clamp-2 mb-3 md:mb-4 uppercase text-xs md:text-sm tracking-tight leading-tight">
+          {product.name}
+        </Link>
+        <div className="mt-auto">
+          <div className="flex flex-col mb-3 md:mb-4">
+            {product.oldPrice && (
+              <span className="text-[10px] md:text-sm text-gray-400 line-through font-medium">
+                De: R$ {product.oldPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </span>
+            )}
+            <div className="price-fluid font-black text-brand-dark">
+              {product.oldPrice ? 'Por: ' : ''}R$ {product.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5 md:gap-2">
+            <Link
+              to={`/produto/${product.id}`}
+              className="text-center py-1.5 md:py-2.5 border border-brand-dark text-brand-dark rounded-lg text-[10px] md:text-xs font-bold hover:bg-brand-bg transition-colors uppercase tracking-wider truncate px-1"
+            >
+              Detalhes
+            </Link>
+            <button
+              onClick={() => addToCart(product)}
+              className="bg-brand-primary text-white py-1.5 md:py-2.5 rounded-lg text-[10px] md:text-xs font-bold hover:bg-brand-dark transition-colors flex items-center justify-center space-x-1 md:space-x-2 uppercase tracking-wider truncate px-1"
+            >
+              <ShoppingCart size={14} className="md:w-4 md:h-4" />
+              <span>Comprar</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </motion.div>
   );
 };
 
