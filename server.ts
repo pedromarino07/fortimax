@@ -603,6 +603,22 @@ async function startServer() {
   app.listen(3000, '0.0.0.0', () => {
     console.log('Server running on http://localhost:3000');
   });
+
+  app.use('/static', express.static(path.join(process.cwd(), 'public')));
+
+  // Exemplo de como salvar no seu server.ts
+app.post('/api/cadastrar', upload.single('imagem'), async (req, res) => {
+  const { nome, preco } = req.body;
+  const nomeArquivo = req.file ? `/img/${req.file.filename}` : "/img/logo_padrao.png";
+
+  // Aqui você salva no Neon
+  await pool.query(
+    'INSERT INTO products (name, price, images) VALUES ($1, $2, $3)',
+    [nome, preco, JSON.stringify([nomeArquivo])] // Salvamos como um array JSON
+  );
+
+  res.status(200).send("Produto cadastrado com sucesso!");
+});
 }
 
 startServer();
