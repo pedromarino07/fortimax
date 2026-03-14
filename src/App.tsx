@@ -609,6 +609,19 @@ const HomePage = () => {
 const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
   const { addToCart } = useCart();
 
+  // Lógica para tratar o campo images que vem como string JSON do SQLite
+  const getImageUrl = (imagesData: any) => {
+    try {
+      if (typeof imagesData === 'string') {
+        const parsed = JSON.parse(imagesData); // Converte '["..."]' em um array real
+        return parsed[0];
+      }
+      return imagesData[0]; // Se já for um array, retorna o primeiro
+    } catch (e) {
+      return "/static/img/logo_padrao.png"; // Fallback se o JSON estiver corrompido
+    }
+  };
+
   return (
     <motion.div
       whileHover={{ y: -5 }}
@@ -616,10 +629,13 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
     >
       <Link to={`/produto/${product.id}`} className="relative h-48 md:h-64 overflow-hidden block">
         <img
-          src={product.images[0]}
+          src={getImageUrl(product.images)}
           alt={product.name}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           referrerPolicy="no-referrer"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = "/static/img/logo_padrao.png";
+          }}
         />
         {product.oferta && (
           <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-red-600 text-white text-[8px] md:text-[10px] font-black px-2 py-1 md:px-3 md:py-1.5 rounded-full shadow-xl animate-pulse uppercase tracking-widest border border-white/20">
