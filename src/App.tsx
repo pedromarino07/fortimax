@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useParams, useLocation } from 'react-router-dom';
-import { ShoppingCart, Search, Menu, X, Phone, Mail, MapPin, Facebook, Instagram, Twitter, ChevronRight, Trash2, Plus, Minus, Clock, LayoutDashboard, Package, Tag, Users, LogOut, LogIn, PlusCircle, Edit, CheckCircle, XCircle } from 'lucide-react';
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useParams, useLocation, useSearchParams, Navigate } from 'react-router-dom';
+import { ShoppingCart, Search, Menu, X, Phone, Mail, MapPin, Facebook, Instagram, Twitter, ChevronRight, Trash2, Plus, Minus, Clock, LayoutDashboard, Package, Tag, Users, LogOut, LogIn, PlusCircle, Edit, CheckCircle, XCircle, Filter, ChevronDown, ChevronLeft, List } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Product, CartItem, User } from './types';
+import { Product, CartItem, User, Category } from './types';
 
 // --- Contexts ---
 
@@ -119,6 +119,20 @@ const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
 // --- Components ---
 
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: 'smooth'
+    });
+  }, [pathname]);
+
+  return null;
+};
+
 const Header = () => {
   const { totalItems } = useCart();
   const { user } = useAuth();
@@ -129,8 +143,11 @@ const Header = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/produtos?search=${searchQuery}`);
+      // Global search resets filters and goes to /produtos
+      navigate(`/produtos?search=${encodeURIComponent(searchQuery.trim())}&page=1`);
       setSearchQuery('');
+      setIsMenuOpen(false);
+      window.scrollTo({ top: 0, behavior: 'instant' });
     }
   };
 
@@ -141,9 +158,12 @@ const Header = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center">
             <img 
-              src="/img/logo.png" 
+              src="/static/img/logo.png" 
               alt="FORTIMAX" 
               className="h-10 md:h-14 w-auto"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "/static/img/logo_padrao.png";
+              }}
             />
           </Link>
 
@@ -168,17 +188,28 @@ const Header = () => {
 
           {/* Desktop Search & Cart */}
           <div className="hidden md:flex items-center space-x-6">
-            <form onSubmit={handleSearch} className="relative">
+            <form onSubmit={handleSearch} className="relative group">
               <input
                 type="text"
                 placeholder="Buscar materiais..."
-                className="pl-4 pr-10 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-brand-primary w-64"
+                className="pl-4 pr-16 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-brand-primary w-64 transition-all focus:w-80"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
-              <button type="submit" className="absolute right-3 top-2.5 text-gray-400 hover:text-brand-primary">
-                <Search size={20} />
-              </button>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-1">
+                {searchQuery && (
+                  <button 
+                    type="button" 
+                    onClick={() => setSearchQuery('')}
+                    className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+                <button type="submit" className="p-1 text-gray-400 hover:text-brand-primary transition-colors">
+                  <Search size={20} />
+                </button>
+              </div>
             </form>
             <Link to="/carrinho" className="relative text-gray-700 hover:text-brand-primary">
               <ShoppingCart size={28} />
@@ -212,13 +243,24 @@ const Header = () => {
             <input
               type="text"
               placeholder="Buscar materiais..."
-              className="w-full pl-4 pr-10 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-primary bg-gray-50"
+              className="w-full pl-4 pr-16 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-primary bg-gray-50"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <button type="submit" className="absolute right-3 top-3 text-gray-400">
-              <Search size={20} />
-            </button>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-2">
+              {searchQuery && (
+                <button 
+                  type="button" 
+                  onClick={() => setSearchQuery('')}
+                  className="p-1 text-gray-400 hover:text-red-500"
+                >
+                  <X size={18} />
+                </button>
+              )}
+              <button type="submit" className="p-1 text-gray-400">
+                <Search size={20} />
+              </button>
+            </div>
           </form>
         </div>
       </div>
@@ -294,9 +336,12 @@ const Footer = () => {
           <div className="space-y-4">
             <Link to="/" className="flex items-center">
               <img 
-                src="/img/logo.png" 
+                src="/static/img/logo.png" 
                 alt="FORTIMAX" 
                 className="logo brightness-0 invert"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "/static/img/logo_padrao.png";
+                }}
               />
             </Link>
             <p className="text-brand-light/80 text-sm leading-relaxed">
@@ -393,49 +438,68 @@ const WhatsAppButton = () => {
 
 const HomePage = () => {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [dbCategories, setDbCategories] = useState<Category[]>([]);
 
   useEffect(() => {
     fetch('/api/products')
       .then(res => res.json())
-      .then(data => setFeaturedProducts(data.filter((p: Product) => p.featured).slice(0, 4)));
+      .then(data => {
+        if (data.products) {
+          setFeaturedProducts(data.products.filter((p: Product) => p.featured).slice(0, 4));
+        }
+      });
+
+    fetch('/api/categories')
+      .then(res => res.json())
+      .then(data => setDbCategories(data));
   }, []);
 
   const categories = [
-    { name: 'Material de Construção', icon: '🏗️', color: 'bg-green-50' },
+    { name: 'Material de Construção', icon: '🏗️', color: 'bg-orange-50' },
     { name: 'Hidráulico', icon: '🚰', color: 'bg-blue-50' },
     { name: 'Elétrico', icon: '⚡', color: 'bg-yellow-50' },
-    { name: 'Tintas', icon: '🎨', color: 'bg-purple-50' },
+    { name: 'Tintas', icon: '🎨', color: 'bg-pink-50' },
     { name: 'Ferragens', icon: '🛠️', color: 'bg-gray-50' },
   ];
 
+  // Merge icons with DB categories
+  const displayCategories = dbCategories.map(dbCat => {
+    const staticCat = categories.find(c => c.name === dbCat.name);
+    return {
+      ...dbCat,
+      icon: staticCat?.icon || '📦',
+      color: staticCat?.color || 'bg-brand-bg'
+    };
+  });
+
   return (
-    <div className="space-y-16 pb-16 bg-brand-bg/30">
+    <div className="space-y-12 md:space-y-16 pb-16 bg-brand-bg/30">
       {/* Hero Banner */}
-      <section className="relative h-[500px] overflow-hidden">
+      <section className="relative h-[400px] md:h-[500px] overflow-hidden">
         <img
-          src="/img/fortimax.png"
+          src="https://picsum.photos/seed/fortimax-banner/1920/1080"
           alt="Banner FORTIMAX"
           className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
         />
-        <div className="absolute inset-0 bg-brand-dark/40 flex items-center">
+        <div className="absolute inset-0 bg-brand-dark/50 flex items-center">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
             <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="max-w-xl text-white space-y-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="max-w-2xl text-white space-y-4 md:space-y-6"
             >
-              <h1 className="text-5xl font-extrabold leading-tight">
+              <h1 className="text-3xl md:text-5xl lg:text-6xl font-black leading-tight uppercase tracking-tighter">
                 Qualidade e Confiança para sua <span className="text-brand-light">Obra em Fortim</span>
               </h1>
-              <p className="text-xl text-gray-100">
+              <p className="text-base md:text-xl text-gray-100 max-w-lg font-medium">
                 Materiais de construção, hidráulicos, elétricos e muito mais com o melhor atendimento da região.
               </p>
-              <div className="flex space-x-4">
-                <Link to="/produtos" className="bg-brand-primary hover:bg-brand-dark text-white px-8 py-3 rounded-lg font-bold transition-all transform hover:scale-105">
+              <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 pt-4">
+                <Link to="/produtos" className="bg-brand-primary hover:bg-brand-dark text-white px-8 py-3.5 rounded-xl font-bold transition-all text-center uppercase tracking-widest text-sm shadow-lg shadow-brand-primary/30">
                   Ver Produtos
                 </Link>
-                <Link to="/ofertas" className="bg-white hover:bg-gray-100 text-brand-dark px-8 py-3 rounded-lg font-bold transition-all transform hover:scale-105">
+                <Link to="/ofertas" className="bg-white hover:bg-gray-100 text-brand-dark px-8 py-3.5 rounded-xl font-bold transition-all text-center uppercase tracking-widest text-sm shadow-lg">
                   Ofertas do Dia
                 </Link>
               </div>
@@ -451,7 +515,7 @@ const HomePage = () => {
           <div className="h-1.5 w-24 bg-brand-primary mx-auto mt-3 rounded-full"></div>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
-          {categories.map((cat, idx) => (
+          {displayCategories.map((cat, idx) => (
             <Link
               key={idx}
               to={`/produtos?cat=${cat.name}`}
@@ -489,7 +553,7 @@ const HomePage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
           <div className="rounded-3xl overflow-hidden shadow-2xl relative group">
             <img
-              src="/img/fortimax.png"
+              src="https://picsum.photos/seed/fortimax-store/800/600"
               alt="Sobre a Fortimax"
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               referrerPolicy="no-referrer"
@@ -539,7 +603,7 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
         />
         {product.oferta && (
           <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-red-600 text-white text-[8px] md:text-[10px] font-black px-2 py-1 md:px-3 md:py-1.5 rounded-full shadow-xl animate-pulse uppercase tracking-widest border border-white/20">
-            OFERTA
+            PROMOÇÃO
           </div>
         )}
       </Link>
@@ -581,32 +645,55 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
 
 const ProductsPage = () => {
   const [products, setProducts] = useState<Product[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  const [searchParams] = React.useState(new URLSearchParams(window.location.search));
+  const [dbCategories, setDbCategories] = useState<Category[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeCategory, setActiveCategory] = useState(searchParams.get('cat') || 'Todos');
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
+  const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page') || '1'));
+  const [totalPages, setTotalPages] = useState(1);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  // Sync state with URL parameters
+  useEffect(() => {
+    setActiveCategory(searchParams.get('cat') || 'Todos');
+    setSearchTerm(searchParams.get('search') || '');
+    setCurrentPage(parseInt(searchParams.get('page') || '1'));
+  }, [searchParams]);
 
   useEffect(() => {
-    fetch('/api/products')
+    const params = new URLSearchParams();
+    if (activeCategory !== 'Todos') params.append('category', activeCategory);
+    if (searchTerm) params.append('search', searchTerm);
+    params.append('page', currentPage.toString());
+    params.append('limit', '40');
+
+    fetch(`/api/products?${params.toString()}`)
       .then(res => res.json())
       .then(data => {
-        setProducts(data);
-        setFilteredProducts(data);
+        setProducts(data.products);
+        setTotalPages(data.pagination.totalPages);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       });
-  }, []);
+  }, [activeCategory, searchTerm, currentPage]);
 
   useEffect(() => {
-    let result = products;
-    if (activeCategory !== 'Todos') {
-      result = result.filter(p => p.category === activeCategory);
-    }
-    if (searchTerm) {
-      result = result.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    }
-    setFilteredProducts(result);
-  }, [activeCategory, searchTerm, products]);
+    fetch('/api/categories')
+      .then(res => res.json())
+      .then(data => setDbCategories(data));
+  }, []);
 
-  const categories = ['Todos', 'Material de Construção', 'Hidráulico', 'Elétrico', 'Tintas', 'Ferragens'];
+  const handleCategoryChange = (cat: string) => {
+    setActiveCategory(cat);
+    setCurrentPage(1);
+    setIsFilterOpen(false);
+    setSearchParams({ cat, search: searchTerm, page: '1' });
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setSearchParams({ cat: activeCategory, search: searchTerm, page: page.toString() });
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -615,36 +702,92 @@ const ProductsPage = () => {
           <h1 className="text-4xl font-black text-brand-dark uppercase">Nossos Produtos</h1>
           <p className="text-gray-500 mt-2 font-medium">Qualidade Fortimax para sua obra</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {categories.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all uppercase tracking-wider ${
-                activeCategory === cat
-                  ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20'
-                  : 'bg-white text-gray-500 border border-gray-200 hover:border-brand-primary hover:text-brand-primary'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
+        
+        {/* Dropdown Filter */}
+        <div className="relative">
+          <button
+            onClick={() => setIsFilterOpen(!isFilterOpen)}
+            className="flex items-center justify-between w-full md:w-64 px-6 py-3 bg-white border border-gray-200 rounded-xl font-bold text-brand-dark hover:border-brand-primary transition-all uppercase text-sm tracking-widest shadow-sm"
+          >
+            <div className="flex items-center">
+              <Filter size={18} className="mr-3 text-brand-primary" />
+              <span>{activeCategory === 'Todos' ? 'Todas Categorias' : activeCategory}</span>
+            </div>
+            <ChevronDown size={18} className={`transition-transform ${isFilterOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {isFilterOpen && (
+            <div className="absolute z-50 mt-2 w-full bg-white border border-gray-100 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+              <button
+                onClick={() => handleCategoryChange('Todos')}
+                className={`w-full text-left px-6 py-3 text-sm font-bold uppercase tracking-wider hover:bg-brand-bg transition-colors ${activeCategory === 'Todos' ? 'text-brand-primary bg-brand-bg' : 'text-gray-600'}`}
+              >
+                Todos os Produtos
+              </button>
+              {dbCategories.map(cat => (
+                <button
+                  key={cat.id}
+                  onClick={() => handleCategoryChange(cat.name)}
+                  className={`w-full text-left px-6 py-3 text-sm font-bold uppercase tracking-wider hover:bg-brand-bg transition-colors ${activeCategory === cat.name ? 'text-brand-primary bg-brand-bg' : 'text-gray-600'}`}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {filteredProducts.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {filteredProducts.map(product => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+      {products.length > 0 ? (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {products.map(product => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-16 flex justify-center items-center space-x-2">
+              <button
+                disabled={currentPage === 1}
+                onClick={() => handlePageChange(currentPage - 1)}
+                className="p-2 rounded-lg border border-gray-200 disabled:opacity-30 hover:bg-brand-bg transition-colors"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              
+              {[...Array(totalPages)].map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => handlePageChange(i + 1)}
+                  className={`w-10 h-10 rounded-lg font-bold text-sm transition-all ${
+                    currentPage === i + 1
+                      ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20'
+                      : 'bg-white text-gray-500 border border-gray-200 hover:border-brand-primary hover:text-brand-primary'
+                  }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+
+              <button
+                disabled={currentPage === totalPages}
+                onClick={() => handlePageChange(currentPage + 1)}
+                className="p-2 rounded-lg border border-gray-200 disabled:opacity-30 hover:bg-brand-bg transition-colors"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          )}
+        </>
       ) : (
         <div className="text-center py-20 bg-brand-bg/50 rounded-3xl border-2 border-dashed border-gray-200">
           <Search size={64} className="mx-auto text-gray-300 mb-4" />
           <h3 className="text-xl font-bold text-gray-900 uppercase">Nenhum produto encontrado</h3>
           <p className="text-gray-500 mt-2">Tente ajustar seus filtros ou busca.</p>
           <button
-            onClick={() => { setActiveCategory('Todos'); setSearchTerm(''); }}
+            onClick={() => setSearchParams({})}
             className="mt-6 text-brand-primary font-bold hover:underline uppercase text-sm tracking-widest"
           >
             Limpar todos os filtros
@@ -657,33 +800,155 @@ const ProductsPage = () => {
 
 const OffersPage = () => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [dbCategories, setDbCategories] = useState<Category[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeCategory, setActiveCategory] = useState(searchParams.get('cat') || 'Todos');
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
+  const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page') || '1'));
+  const [totalPages, setTotalPages] = useState(1);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  // Sync state with URL parameters
+  useEffect(() => {
+    setActiveCategory(searchParams.get('cat') || 'Todos');
+    setSearchTerm(searchParams.get('search') || '');
+    setCurrentPage(parseInt(searchParams.get('page') || '1'));
+  }, [searchParams]);
 
   useEffect(() => {
-    fetch('/api/products')
+    const params = new URLSearchParams();
+    if (activeCategory !== 'Todos') params.append('category', activeCategory);
+    if (searchTerm) params.append('search', searchTerm);
+    params.append('page', currentPage.toString());
+    params.append('limit', '40');
+    params.append('onlyOffers', 'true');
+
+    fetch(`/api/products?${params.toString()}`)
       .then(res => res.json())
       .then(data => {
-        setProducts(data.filter((p: Product) => p.oferta));
+        setProducts(data.products);
+        setTotalPages(data.pagination.totalPages);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       });
+  }, [activeCategory, searchTerm, currentPage]);
+
+  useEffect(() => {
+    fetch('/api/categories')
+      .then(res => res.json())
+      .then(data => setDbCategories(data));
   }, []);
+
+  const handleCategoryChange = (cat: string) => {
+    setActiveCategory(cat);
+    setCurrentPage(1);
+    setIsFilterOpen(false);
+    setSearchParams({ cat, search: searchTerm, page: '1' });
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setSearchParams({ cat: activeCategory, search: searchTerm, page: page.toString() });
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="text-center mb-16">
-        <h1 className="text-4xl font-black text-brand-dark uppercase">Ofertas Imperdíveis</h1>
-        <p className="text-gray-500 mt-4 text-lg font-medium">Aproveite os melhores preços da Fortimax!</p>
-        <div className="h-1.5 w-24 bg-red-600 mx-auto mt-4 rounded-full"></div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-12 space-y-6 md:space-y-0">
+        <div>
+          <h1 className="text-4xl font-black text-brand-dark uppercase tracking-tighter">Ofertas <span className="text-red-600">Imperdíveis</span></h1>
+          <p className="text-gray-500 mt-2 font-medium">Os melhores preços da Fortimax para você</p>
+          <div className="h-1.5 w-24 bg-red-600 mt-4 rounded-full"></div>
+        </div>
+        
+        {/* Dropdown Filter */}
+        <div className="relative">
+          <button
+            onClick={() => setIsFilterOpen(!isFilterOpen)}
+            className="flex items-center justify-between w-full md:w-64 px-6 py-3 bg-white border border-gray-200 rounded-xl font-bold text-brand-dark hover:border-brand-primary transition-all uppercase text-sm tracking-widest shadow-sm"
+          >
+            <div className="flex items-center">
+              <Filter size={18} className="mr-3 text-brand-primary" />
+              <span>{activeCategory === 'Todos' ? 'Todas Categorias' : activeCategory}</span>
+            </div>
+            <ChevronDown size={18} className={`transition-transform ${isFilterOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {isFilterOpen && (
+            <div className="absolute z-50 mt-2 w-full bg-white border border-gray-100 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+              <button
+                onClick={() => handleCategoryChange('Todos')}
+                className={`w-full text-left px-6 py-3 text-sm font-bold uppercase tracking-wider hover:bg-brand-bg transition-colors ${activeCategory === 'Todos' ? 'text-brand-primary bg-brand-bg' : 'text-gray-600'}`}
+              >
+                Todos os Produtos em Oferta
+              </button>
+              {dbCategories.map(cat => (
+                <button
+                  key={cat.id}
+                  onClick={() => handleCategoryChange(cat.name)}
+                  className={`w-full text-left px-6 py-3 text-sm font-bold uppercase tracking-wider hover:bg-brand-bg transition-colors ${activeCategory === cat.name ? 'text-brand-primary bg-brand-bg' : 'text-gray-600'}`}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {products.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {products.map(product => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {products.map(product => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-16 flex justify-center items-center space-x-2">
+              <button
+                disabled={currentPage === 1}
+                onClick={() => handlePageChange(currentPage - 1)}
+                className="p-2 rounded-lg border border-gray-200 disabled:opacity-30 hover:bg-brand-bg transition-colors"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              
+              {[...Array(totalPages)].map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => handlePageChange(i + 1)}
+                  className={`w-10 h-10 rounded-lg font-bold text-sm transition-all ${
+                    currentPage === i + 1
+                      ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20'
+                      : 'bg-white text-gray-500 border border-gray-200 hover:border-brand-primary hover:text-brand-primary'
+                  }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+
+              <button
+                disabled={currentPage === totalPages}
+                onClick={() => handlePageChange(currentPage + 1)}
+                className="p-2 rounded-lg border border-gray-200 disabled:opacity-30 hover:bg-brand-bg transition-colors"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          )}
+        </>
       ) : (
         <div className="text-center py-20 bg-brand-bg/50 rounded-3xl border-2 border-dashed border-gray-200">
+          <Tag size={64} className="mx-auto text-gray-300 mb-4" />
           <h3 className="text-xl font-bold text-gray-900 uppercase">Não há ofertas no momento</h3>
           <p className="text-gray-500 mt-2">Fique atento, novas promoções em breve!</p>
+          <button
+            onClick={() => setSearchParams({})}
+            className="mt-6 text-brand-primary font-bold hover:underline uppercase text-sm tracking-widest"
+          >
+            Limpar todos os filtros
+          </button>
         </div>
       )}
     </div>
@@ -710,11 +975,11 @@ const ProductDetailPage = () => {
   if (!product) return <div className="h-screen flex items-center justify-center font-bold text-brand-dark">Carregando...</div>;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-16">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16">
         {/* Images */}
         <div className="space-y-4">
-          <div className="aspect-square rounded-3xl overflow-hidden border border-gray-100 shadow-sm bg-white">
+          <div className="aspect-square rounded-2xl md:rounded-3xl overflow-hidden border border-gray-100 shadow-sm bg-white">
             <img
               src={product.images[activeImage]}
               alt={product.name}
@@ -722,12 +987,12 @@ const ProductDetailPage = () => {
               referrerPolicy="no-referrer"
             />
           </div>
-          <div className="flex space-x-4">
+          <div className="flex space-x-2 md:space-x-4 overflow-x-auto pb-2 scrollbar-hide">
             {product.images.map((img, idx) => (
               <button
                 key={idx}
                 onClick={() => setActiveImage(idx)}
-                className={`w-24 h-24 rounded-xl overflow-hidden border-2 transition-all ${
+                className={`flex-shrink-0 w-16 h-16 md:w-24 md:h-24 rounded-lg md:rounded-xl overflow-hidden border-2 transition-all ${
                   activeImage === idx ? 'border-brand-primary shadow-lg' : 'border-transparent opacity-60 hover:opacity-100'
                 }`}
               >
@@ -738,47 +1003,47 @@ const ProductDetailPage = () => {
         </div>
 
         {/* Info */}
-        <div className="space-y-8">
+        <div className="space-y-6 md:space-y-8">
           <div>
-            <div className="text-brand-primary font-bold text-sm uppercase tracking-widest mb-2">{product.category}</div>
-            <h1 className="text-4xl font-black text-brand-dark leading-tight uppercase">{product.name}</h1>
+            <div className="text-brand-primary font-bold text-xs md:text-sm uppercase tracking-widest mb-1 md:mb-2">{product.category}</div>
+            <h1 className="text-xl md:text-3xl lg:text-4xl font-black text-brand-dark leading-tight uppercase tracking-tight">{product.name}</h1>
           </div>
 
           <div className="flex flex-col">
             {product.oldPrice && (
-              <span className="text-lg text-gray-400 line-through font-medium">
+              <span className="text-sm md:text-lg text-gray-400 line-through font-medium">
                 De: R$ {product.oldPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </span>
             )}
-            <div className="text-5xl font-black text-brand-dark">
+            <div className="text-3xl md:text-5xl font-black text-brand-dark tracking-tighter">
               {product.oldPrice ? 'Por: ' : ''}R$ {product.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
           </div>
 
-          <p className="text-gray-600 text-lg leading-relaxed">
+          <p className="text-gray-600 text-sm md:text-lg leading-relaxed">
             {product.description}
           </p>
 
-          <div className="bg-brand-bg p-6 rounded-2xl border border-brand-primary/10 space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-brand-dark font-bold uppercase text-sm">Disponibilidade:</span>
-              <span className="text-brand-primary font-bold flex items-center text-sm uppercase">
-                <span className="w-2.5 h-2.5 bg-brand-primary rounded-full mr-2 animate-pulse"></span>
+          <div className="bg-brand-bg p-4 md:p-6 rounded-2xl border border-brand-primary/10 space-y-3 md:space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <span className="text-brand-dark font-bold uppercase text-[10px] md:text-xs tracking-wider">Disponibilidade:</span>
+              <span className="text-brand-primary font-bold flex items-center text-xs md:text-sm uppercase whitespace-nowrap">
+                <span className="w-2 h-2 md:w-2.5 md:h-2.5 bg-brand-primary rounded-full mr-2 animate-pulse"></span>
                 Em estoque ({product.stock} unidades)
               </span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-brand-dark font-bold uppercase text-sm">Entrega:</span>
-              <span className="text-gray-600 text-sm font-medium">Fortim e Região</span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <span className="text-brand-dark font-bold uppercase text-[10px] md:text-xs tracking-wider">Entrega:</span>
+              <span className="text-gray-600 text-xs md:text-sm font-medium uppercase">Fortim e Região</span>
             </div>
           </div>
 
-          <div className="flex space-x-4">
+          <div className="flex pt-4">
             <button
               onClick={() => addToCart(product)}
-              className="w-full bg-brand-primary hover:bg-brand-dark text-white py-5 rounded-xl font-bold text-lg transition-all shadow-xl shadow-brand-primary/20 flex items-center justify-center space-x-3 uppercase tracking-widest"
+              className="w-full bg-brand-primary hover:bg-brand-dark text-white py-4 md:py-5 rounded-xl font-bold text-sm md:text-lg transition-all shadow-xl shadow-brand-primary/20 flex items-center justify-center space-x-3 uppercase tracking-widest"
             >
-              <ShoppingCart size={24} />
+              <ShoppingCart size={20} className="md:w-6 md:h-6" />
               <span>Adicionar ao Carrinho</span>
             </button>
           </div>
@@ -791,20 +1056,39 @@ const ProductDetailPage = () => {
 const CartPage = () => {
   const { cart, removeFromCart, updateQuantity, totalPrice, clearCart } = useCart();
 
-  const handleCheckout = () => {
-    const phoneNumber = '5588988253050';
-    let message = 'Olá, gostaria de fazer um pedido.\n\nProdutos selecionados:\n';
-    
-    cart.forEach(item => {
-      message += `- ${item.quantity}x ${item.name}\n`;
-    });
+  const handleCheckout = async () => {
+    try {
+      // Deduct stock in backend
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: cart.map(i => ({ id: i.id, quantity: i.quantity })) })
+      });
 
-    message += `\nTotal aproximado: R$ ${totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n\nPoderia confirmar disponibilidade?`;
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || 'Erro ao processar pedido. Verifique o estoque.');
+        return;
+      }
 
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
-    
-    window.open(whatsappUrl, '_blank');
+      const phoneNumber = '5588988253050';
+      let message = 'Olá, gostaria de fazer um pedido.\n\nProdutos selecionados:\n';
+      
+      cart.forEach(item => {
+        message += `- ${item.quantity}x ${item.name}\n`;
+      });
+
+      message += `\nTotal aproximado: R$ ${totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n\nPoderia confirmar disponibilidade?`;
+
+      const encodedMessage = encodeURIComponent(message);
+      const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+      
+      window.open(whatsappUrl, '_blank');
+      clearCart();
+    } catch (e) {
+      console.error(e);
+      alert('Erro de conexão com o servidor.');
+    }
   };
 
   if (cart.length === 0) {
@@ -823,25 +1107,25 @@ const CartPage = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-      <h1 className="text-4xl font-black text-brand-dark mb-12 uppercase">Seu Carrinho</h1>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-        <div className="lg:col-span-2 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-16">
+      <h1 className="text-2xl md:text-4xl font-black text-brand-dark mb-8 md:mb-12 uppercase tracking-tight text-center md:text-left">Seu Carrinho</h1>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12">
+        <div className="lg:col-span-2 space-y-4 md:space-y-6">
           {cart.map(item => (
-            <div key={item.id} className="bg-white p-6 rounded-2xl border border-gray-100 flex items-center space-x-6 shadow-sm hover:shadow-md transition-all">
-              <img src={item.images[0]} alt={item.name} className="w-24 h-24 object-cover rounded-xl bg-brand-bg" referrerPolicy="no-referrer" />
-              <div className="flex-grow">
-                <h3 className="font-bold text-brand-dark text-lg uppercase text-sm tracking-tight">{item.name}</h3>
-                <p className="text-gray-400 text-xs font-bold uppercase tracking-wider mt-1">{item.category}</p>
-                <div className="mt-2 text-brand-primary font-black">
+            <div key={item.id} className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-6 shadow-sm hover:shadow-md transition-all box-border">
+              <img src={item.images[0]} alt={item.name} className="w-20 h-20 md:w-24 md:h-24 object-cover rounded-xl bg-brand-bg flex-shrink-0" referrerPolicy="no-referrer" />
+              <div className="flex-grow text-center sm:text-left">
+                <h3 className="font-bold text-brand-dark text-sm md:text-lg uppercase tracking-tight line-clamp-2">{item.name}</h3>
+                <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mt-1">{item.category}</p>
+                <div className="mt-2 text-brand-primary font-black text-sm md:text-base">
                   R$ {item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </div>
               </div>
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-4 w-full sm:w-auto justify-between sm:justify-end">
                 <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden bg-white">
-                  <button onClick={() => updateQuantity(item.id, -1)} className="p-2 hover:bg-brand-bg"><Minus size={16} /></button>
-                  <span className="px-4 font-bold">{item.quantity}</span>
-                  <button onClick={() => updateQuantity(item.id, 1)} className="p-2 hover:bg-brand-bg"><Plus size={16} /></button>
+                  <button onClick={() => updateQuantity(item.id, -1)} className="p-2 hover:bg-brand-bg"><Minus size={14} /></button>
+                  <span className="px-3 md:px-4 font-bold text-sm">{item.quantity}</span>
+                  <button onClick={() => updateQuantity(item.id, 1)} className="p-2 hover:bg-brand-bg"><Plus size={14} /></button>
                 </div>
                 <button onClick={() => removeFromCart(item.id)} className="text-red-400 hover:text-red-600 p-2 transition-colors">
                   <Trash2 size={20} />
@@ -849,38 +1133,40 @@ const CartPage = () => {
               </div>
             </div>
           ))}
-          <button onClick={clearCart} className="text-gray-400 text-xs font-bold hover:text-red-500 transition-colors uppercase tracking-widest">
-            Limpar Carrinho
-          </button>
+          <div className="flex justify-center md:justify-start">
+            <button onClick={clearCart} className="text-gray-400 text-[10px] font-bold hover:text-red-500 transition-colors uppercase tracking-widest">
+              Limpar Carrinho
+            </button>
+          </div>
         </div>
 
-        <div className="bg-white p-8 rounded-3xl border border-brand-primary/10 shadow-xl h-fit space-y-6">
-          <h3 className="text-xl font-black text-brand-dark border-b pb-4 uppercase tracking-wider">Resumo do Pedido</h3>
-          <div className="space-y-4">
-            <div className="flex justify-between text-gray-600 font-medium">
+        <div className="bg-white p-6 md:p-8 rounded-3xl border border-brand-primary/10 shadow-xl h-fit space-y-6 box-border">
+          <h3 className="text-lg md:text-xl font-black text-brand-dark border-b pb-4 uppercase tracking-wider text-center md:text-left">Resumo do Pedido</h3>
+          <div className="space-y-3 md:space-y-4">
+            <div className="flex justify-between text-gray-600 font-medium text-sm md:text-base">
               <span>Subtotal</span>
               <span>R$ {totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
-            <div className="border-t border-brand-primary/10 pt-4 flex justify-between text-2xl font-black text-brand-dark">
+            <div className="border-t border-brand-primary/10 pt-4 flex justify-between text-xl md:text-2xl font-black text-brand-dark">
               <span>Total</span>
               <span>R$ {totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
           </div>
           
           <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
-            <p className="text-[10px] text-amber-800 font-bold uppercase leading-relaxed text-center">
-              <span className="text-amber-600">ENTREGAS:</span> As condições de entrega para o Fortim devem ser combinadas diretamente com nosso vendedor da loja. Entre em contato conosco para verificar a disponibilidade.
+            <p className="text-[9px] md:text-[10px] text-amber-800 font-bold uppercase leading-relaxed text-center">
+              <span className="text-amber-600">ENTREGAS:</span> As condições de entrega para o Fortim devem ser combinadas diretamente com nosso vendedor da loja.
             </p>
           </div>
 
           <button 
             onClick={handleCheckout}
-            className="w-full bg-brand-primary hover:bg-brand-dark text-white py-5 rounded-xl font-bold text-lg transition-all shadow-xl shadow-brand-primary/20 flex items-center justify-center space-x-3 uppercase tracking-widest"
+            className="w-full bg-brand-primary hover:bg-brand-dark text-white py-4 md:py-5 rounded-xl font-bold text-sm md:text-lg transition-all shadow-xl shadow-brand-primary/20 flex items-center justify-center space-x-3 uppercase tracking-widest"
           >
-            <Phone size={20} />
-            <span>Finalizar no WhatsApp</span>
+            <Phone size={18} className="flex-shrink-0" />
+            <span className="whitespace-nowrap">Finalizar no WhatsApp</span>
           </button>
-          <p className="text-center text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+          <p className="text-center text-[9px] md:text-[10px] text-gray-400 font-bold uppercase tracking-wider">
             Você será redirecionado para o WhatsApp da Fortimax.
           </p>
         </div>
@@ -1052,6 +1338,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
   const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, path: '/admin' },
     { name: 'Produtos', icon: Package, path: '/admin/produtos' },
+    { name: 'Categorias', icon: List, path: '/admin/categorias' },
     { name: 'Usuários', icon: Users, path: '/admin/usuarios' },
   ];
 
@@ -1066,7 +1353,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
       <aside className="w-full md:w-64 bg-brand-dark text-white flex flex-col">
         <div className="p-6 border-b border-brand-primary/20">
           <Link to="/" className="flex items-center">
-            <img src="/img/logo.png" alt="FORTIMAX" className="h-10 brightness-0 invert" />
+            <img src="/static/img/logo.png" alt="FORTIMAX" className="h-10 brightness-0 invert" onError={e => (e.target as any).src = "/static/img/logo_padrao.png"} />
           </Link>
           <div className="mt-4">
             <p className="text-xs font-bold text-brand-light uppercase tracking-widest">Olá, {user?.nome}</p>
@@ -1215,10 +1502,11 @@ const AdminDashboard = () => {
 
 const AdminProducts = () => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [dbCategories, setDbCategories] = useState<Category[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState<any>({
-    name: '', category: 'Material de Construção', price: '', oldPrice: '', oferta: false, description: '', stock: '', featured: false, active: true
+    name: '', category: '', price: '', oldPrice: '', oferta: false, description: '', stock: '', featured: false, active: true
   });
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const { user } = useAuth();
@@ -1227,8 +1515,18 @@ const AdminProducts = () => {
     fetch('/api/admin/products').then(res => res.json()).then(setProducts);
   };
 
+  const fetchCategories = () => {
+    fetch('/api/categories').then(res => res.json()).then(data => {
+      setDbCategories(data);
+      if (data.length > 0 && !formData.category) {
+        setFormData(prev => ({ ...prev, category: data[0].name }));
+      }
+    });
+  };
+
   useEffect(() => {
     fetchProducts();
+    fetchCategories();
   }, []);
 
   const handleEdit = (p: Product) => {
@@ -1378,11 +1676,9 @@ const AdminProducts = () => {
                   <div className="space-y-2">
                     <label className="text-xs font-black text-brand-dark uppercase tracking-wider">Categoria</label>
                     <select className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-primary focus:outline-none" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
-                      <option>Material de Construção</option>
-                      <option>Hidráulico</option>
-                      <option>Elétrico</option>
-                      <option>Tintas</option>
-                      <option>Ferragens</option>
+                      {dbCategories.map(cat => (
+                        <option key={cat.id} value={cat.name}>{cat.name}</option>
+                      ))}
                     </select>
                   </div>
                   <div className="space-y-2">
@@ -1428,6 +1724,127 @@ const AdminProducts = () => {
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-8 py-4 border border-gray-200 rounded-xl font-bold text-gray-500 hover:bg-gray-50 uppercase tracking-widest text-xs">Cancelar</button>
                 <button form="productForm" type="submit" className="px-10 py-4 bg-brand-primary text-white rounded-xl font-bold hover:bg-brand-dark shadow-xl shadow-brand-primary/20 uppercase tracking-widest text-xs">Salvar Produto</button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const AdminCategories = () => {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [formData, setFormData] = useState({ name: '', active: true });
+  const { user } = useAuth();
+
+  const fetchCategories = () => {
+    fetch('/api/categories').then(res => res.json()).then(setCategories);
+  };
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const handleEdit = (cat: Category) => {
+    setEditingCategory(cat);
+    setFormData({ name: cat.name, active: cat.active });
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = async (id: number) => {
+    if (confirm('Deseja realmente remover esta categoria?')) {
+      await fetch(`/api/admin/categories/${id}`, { method: 'DELETE' });
+      fetchCategories();
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const method = editingCategory ? 'PUT' : 'POST';
+    const url = editingCategory ? `/api/admin/categories/${editingCategory.id}` : '/api/admin/categories';
+    
+    await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData)
+    });
+
+    setIsModalOpen(false);
+    setEditingCategory(null);
+    setFormData({ name: '', active: true });
+    fetchCategories();
+  };
+
+  return (
+    <div className="space-y-10">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-black text-brand-dark uppercase">Categorias</h1>
+        <button 
+          onClick={() => { setEditingCategory(null); setFormData({ name: '', active: true }); setIsModalOpen(true); }}
+          className="bg-brand-primary text-white px-6 py-3 rounded-xl font-bold flex items-center space-x-2 hover:bg-brand-dark transition-all uppercase tracking-widest text-sm"
+        >
+          <PlusCircle size={20} />
+          <span>Nova Categoria</span>
+        </button>
+      </div>
+
+      <div className="bg-white rounded-3xl shadow-sm border border-brand-primary/5 overflow-hidden">
+        <table className="w-full text-left">
+          <thead className="bg-brand-bg/50 text-brand-dark text-xs font-black uppercase tracking-widest">
+            <tr>
+              <th className="px-6 py-4">Nome</th>
+              <th className="px-6 py-4">Status</th>
+              <th className="px-6 py-4 text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 text-sm">
+            {categories.map(cat => (
+              <tr key={cat.id} className="hover:bg-brand-bg/20 transition-colors">
+                <td className="px-6 py-4 font-bold text-brand-dark">{cat.name}</td>
+                <td className="px-6 py-4">
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${cat.active ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                    {cat.active ? 'Ativa' : 'Inativa'}
+                  </span>
+                </td>
+                <td className="px-6 py-4 text-right space-x-2">
+                  <button onClick={() => handleEdit(cat)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"><Edit size={18} /></button>
+                  <button onClick={() => handleDelete(cat.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={18} /></button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <AnimatePresence>
+        {isModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-brand-dark/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
+            >
+              <div className="p-8 border-b border-gray-100 flex justify-between items-center">
+                <h2 className="text-2xl font-black text-brand-dark uppercase">{editingCategory ? 'Editar Categoria' : 'Nova Categoria'}</h2>
+                <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-brand-dark"><X size={28} /></button>
+              </div>
+              
+              <form onSubmit={handleSubmit} className="p-8 space-y-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-brand-dark uppercase tracking-wider">Nome da Categoria</label>
+                  <input required type="text" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-primary focus:outline-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                </div>
+                <div className="flex items-center space-x-3">
+                  <input type="checkbox" id="catActive" className="w-5 h-5 rounded border-gray-300 text-brand-primary focus:ring-brand-primary" checked={formData.active} onChange={e => setFormData({...formData, active: e.target.checked})} />
+                  <label htmlFor="catActive" className="text-xs font-black text-brand-dark uppercase tracking-wider cursor-pointer">Ativa</label>
+                </div>
+                <button type="submit" className="w-full bg-brand-primary text-white py-4 rounded-xl font-bold hover:bg-brand-dark transition-all uppercase tracking-widest text-sm shadow-lg shadow-brand-primary/20">
+                  {editingCategory ? 'Salvar Alterações' : 'Criar Categoria'}
+                </button>
+              </form>
             </motion.div>
           </div>
         )}
@@ -1719,6 +2136,7 @@ const AnimatedRoutes = () => {
             ) : <Navigate to="/login" />
           } />
           <Route path="/admin/produtos" element={user ? <AdminLayout><AdminProducts /></AdminLayout> : <Navigate to="/login" />} />
+          <Route path="/admin/categorias" element={user && user.nivel !== 'vendedor' ? <AdminLayout><AdminCategories /></AdminLayout> : <Navigate to="/admin" />} />
           <Route path="/admin/usuarios" element={user?.nivel === 'admin' ? <AdminLayout><AdminUsers /></AdminLayout> : <Navigate to="/admin" />} />
           
           {/* Fallback */}
@@ -1729,17 +2147,12 @@ const AnimatedRoutes = () => {
   );
 };
 
-const Navigate = ({ to }: { to: string }) => {
-  const navigate = useNavigate();
-  useEffect(() => { navigate(to); }, [navigate, to]);
-  return null;
-};
-
 export default function App() {
   return (
     <AuthProvider>
       <CartProvider>
         <Router>
+          <ScrollToTop />
           <div className="min-h-screen bg-white flex flex-col font-sans selection:bg-brand-light selection:text-brand-dark">
             <AnimatedRoutes />
           </div>

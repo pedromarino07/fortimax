@@ -24,3 +24,9 @@ export interface User {
 export interface CartItem extends Product {
   quantity: number;
 }
+
+export interface Category {
+  id: number;
+  name: string;
+  active: boolean;
+}

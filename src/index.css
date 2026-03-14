@@ -16,6 +16,20 @@
     opacity: 0;
     animation: fadeIn 0.3s forwards;
   }
+  
+  *, ::before, ::after {
+    box-sizing: border-box;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
 @keyframes fadeIn {

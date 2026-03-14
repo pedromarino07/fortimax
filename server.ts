@@ -41,6 +41,13 @@ db.exec(`
     featured INTEGER DEFAULT 0,
     active INTEGER DEFAULT 1
   );
+
+  CREATE TABLE IF NOT EXISTS categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL,
+    active INTEGER DEFAULT 1,
+    data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 // Seed initial users if empty
@@ -54,6 +61,19 @@ if (userCount.count === 0) {
   db.prepare('INSERT INTO usuarios (nome, usuario, email, senha, nivel, ativo) VALUES (?, ?, ?, ?, ?, ?)').run('Administrador', 'admin', 'admin@fortimax.com.br', adminPass, 'admin', 1);
   db.prepare('INSERT INTO usuarios (nome, usuario, email, senha, nivel, ativo) VALUES (?, ?, ?, ?, ?, ?)').run('Helena', 'helena', 'helena@fortimax.com.br', helenaPass, 'gerente', 1);
   db.prepare('INSERT INTO usuarios (nome, usuario, email, senha, nivel, ativo) VALUES (?, ?, ?, ?, ?, ?)').run('Tanizio', 'tanizio', 'tanizio@fortimax.com.br', tanizioPass, 'vendedor', 1);
+}
+
+// Fix: Ensure 'admin' user is actually an 'admin' (User request)
+db.prepare("UPDATE usuarios SET nivel = 'admin' WHERE usuario = 'admin'").run();
+
+// Seed initial categories if empty
+const categoryCount = db.prepare('SELECT count(*) as count FROM categories').get() as { count: number };
+if (categoryCount.count === 0) {
+  const initialCats = ['Material de Construção', 'Hidráulico', 'Elétrico', 'Tintas', 'Ferragens'];
+  const insert = db.prepare('INSERT INTO categories (name) VALUES (?)');
+  for (const cat of initialCats) {
+    insert.run(cat);
+  }
 }
 
 // Seed initial products from JSON if empty
@@ -120,10 +140,87 @@ const isGerenteOrAdmin = (req: any, res: any, next: any) => {
 
 // --- API Routes ---
 
-// Public Products
+// Public Products with Pagination
 app.get('/api/products', (req, res) => {
-  const products = db.prepare('SELECT * FROM products WHERE active = 1').all();
-  res.json(products.map((p: any) => ({ ...p, images: JSON.parse(p.images), oferta: !!p.oferta, featured: !!p.featured, active: !!p.active })));
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 40;
+  const offset = (page - 1) * limit;
+  const category = req.query.category as string;
+  const search = req.query.search as string;
+  const onlyOffers = req.query.onlyOffers === 'true';
+
+  let query = 'SELECT * FROM products WHERE active = 1 AND stock > 0';
+  const params: any[] = [];
+
+  if (category && category !== 'Todos') {
+    query += ' AND category = ?';
+    params.push(category);
+  }
+
+  if (search) {
+    query += ' AND name LIKE ?';
+    params.push(`%${search}%`);
+  }
+
+  if (onlyOffers) {
+    query += ' AND oferta = 1';
+  }
+
+  // Get total count for pagination
+  const countQuery = query.replace('SELECT *', 'SELECT count(*) as count');
+  const totalCount = (db.prepare(countQuery).get(...params) as any).count;
+
+  query += ' LIMIT ? OFFSET ?';
+  params.push(limit, offset);
+
+  const products = db.prepare(query).all(...params);
+  
+  res.json({
+    products: products.map((p: any) => ({ 
+      ...p, 
+      images: JSON.parse(p.images), 
+      oferta: !!p.oferta, 
+      featured: !!p.featured, 
+      active: !!p.active 
+    })),
+    pagination: {
+      page,
+      limit,
+      totalCount,
+      totalPages: Math.ceil(totalCount / limit)
+    }
+  });
+});
+
+// Categories
+app.get('/api/categories', (req, res) => {
+  const categories = db.prepare('SELECT * FROM categories WHERE active = 1').all();
+  res.json(categories);
+});
+
+app.post('/api/admin/categories', authenticate, isGerenteOrAdmin, (req, res) => {
+  const { name } = req.body;
+  try {
+    db.prepare('INSERT INTO categories (name) VALUES (?)').run(name);
+    res.json({ message: 'Categoria criada' });
+  } catch (e) {
+    res.status(400).json({ error: 'Categoria já existe' });
+  }
+});
+
+app.put('/api/admin/categories/:id', authenticate, isGerenteOrAdmin, (req, res) => {
+  const { name, active } = req.body;
+  try {
+    db.prepare('UPDATE categories SET name = ?, active = ? WHERE id = ?').run(name, active ? 1 : 0, req.params.id);
+    res.json({ message: 'Categoria atualizada' });
+  } catch (e) {
+    res.status(400).json({ error: 'Erro ao atualizar categoria' });
+  }
+});
+
+app.delete('/api/admin/categories/:id', authenticate, isAdmin, (req, res) => {
+  db.prepare('DELETE FROM categories WHERE id = ?').run(req.params.id);
+  res.json({ message: 'Categoria removida' });
 });
 
 app.get('/api/products/:id', (req, res) => {
@@ -289,6 +386,38 @@ app.get('/api/admin/stats', authenticate, isGerenteOrAdmin, (req: any, res) => {
     offersCount: offersCount.count,
     usersCount: usersCount.count
   });
+});
+
+// Checkout - Stock Deduction (ACID Transaction)
+app.post('/api/checkout', (req, res) => {
+  const { items } = req.body; // [{id, quantity}]
+  
+  if (!items || !Array.isArray(items)) {
+    return res.status(400).json({ error: 'Itens inválidos' });
+  }
+
+  const transaction = db.transaction((orderItems) => {
+    for (const item of orderItems) {
+      const product = db.prepare('SELECT stock FROM products WHERE id = ?').get(item.id) as any;
+      
+      if (!product) {
+        throw new Error(`Produto ${item.id} não encontrado`);
+      }
+      
+      if (product.stock < item.quantity) {
+        throw new Error(`Estoque insuficiente para o produto ${item.id}`);
+      }
+      
+      db.prepare('UPDATE products SET stock = stock - ? WHERE id = ?').run(item.quantity, item.id);
+    }
+  });
+
+  try {
+    transaction(items);
+    res.json({ message: 'Estoque atualizado com sucesso' });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 // --- Vite Integration ---
