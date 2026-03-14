@@ -387,14 +387,22 @@ app.get('/api/auth/me', (req, res) => {
 app.get('/api/admin/products', authenticate, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM products ORDER BY id DESC');
+    
     res.json(result.rows.map((p: any) => ({ 
       ...p, 
+      // O segredo para parar o erro .toFixed():
+      // Transformamos qualquer valor de preço em número antes de enviar ao React
+      price: p.price ? parseFloat(p.price) : 0,
+      oldprice: p.oldprice ? parseFloat(p.oldprice) : 0,
+      
+      // O que você já tinha:
       images: p.images ? JSON.parse(p.images) : [], 
       oferta: !!p.oferta, 
       featured: !!p.featured, 
       active: !!p.active 
     })));
   } catch (err) {
+    console.error('Erro na API /admin/products:', err);
     res.status(500).json({ error: 'Erro ao buscar produtos admin' });
   }
 });
