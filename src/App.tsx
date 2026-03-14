@@ -690,11 +690,14 @@ const ProductsPage = () => {
     params.append('page', currentPage.toString());
     params.append('limit', '40');
 
-    fetch(`/api/produtos?${params.toString()}`)
+      fetch(`/api/products?${params.toString()}`)
       .then(res => res.json())
       .then(data => {
-        setProducts(data.produtos);
-        setTotalPages(data.pagination.totalPages);
+        // CORREÇÃO: Altere de data.produtos para data.products
+        console.log("Dados recebidos da API:", data); // Isso vai confirmar o formato no F12
+        
+        setProducts(data.products || []); // O '|| []' previne que o app quebre se vier vazio
+        setTotalPages(data.pagination?.totalPages || 1);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       });
   }, [activeCategory, searchTerm, currentPage, dbCategories]);
@@ -849,7 +852,7 @@ const OffersPage = () => {
     params.append('limit', '40');
     params.append('onlyOffers', 'true');
 
-    fetch(`/api/produtos?${params.toString()}`)
+    fetch(`/api/products?${params.toString()}`)
       .then(res => res.json())
       .then(data => {
         setProducts(data.produtos);
@@ -989,7 +992,7 @@ const ProductDetailPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch(`/api/produtos/${id}`)
+    fetch(`/api/products/${id}`)
       .then(res => {
         if (!res.ok) throw new Error();
         return res.json();
