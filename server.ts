@@ -122,7 +122,7 @@ async function initDb() {
   }
 }
 
-initDb();
+//initDb();
 
 // --- Express Setup ---
 const app = express();
@@ -171,20 +171,25 @@ const isGerenteOrAdmin = (req: any, res: any, next: any) => {
 
 // --- API Routes ---
 
-// --- PostgreSQL Read-Only API (Migration Phase) ---
 app.get('/api/neon/products', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM products WHERE active = 1');
+    const result = await pool.query('SELECT * FROM products');
+    
     res.json(result.rows.map(p => ({
       ...p,
+      // Garante que preço seja número. Se for null, vira 0.
+      price: parseFloat(p.price) || 0,
+      oldprice: p.oldprice ? parseFloat(p.oldprice) : null,
+      // Se tiver imagem, tenta parsear, senão retorna array vazio
       images: p.images ? JSON.parse(p.images) : [],
+      // Converte inteiros 1 ou 0 para booleano
+      active: p.active === 1,
       oferta: !!p.oferta,
-      featured: !!p.featured,
-      active: !!p.active
+      featured: !!p.featured
     })));
   } catch (err) {
-    console.error('Erro ao buscar produtos no Neon:', err);
-    res.status(500).json({ error: 'Erro ao conectar com o banco de dados Neon.' });
+    console.error('Erro ao buscar produtos:', err);
+    res.status(500).json({ error: 'Erro interno.' });
   }
 });
 
