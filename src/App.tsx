@@ -491,7 +491,7 @@ const HomePage = () => {
       {/* Hero Banner */}
       <section className="relative h-[400px] md:h-[500px] overflow-hidden">
         <img
-          src="/img/banner.png"
+          src="/img/banner.jpg"
           alt="Banner FORTIMAX"
           className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
