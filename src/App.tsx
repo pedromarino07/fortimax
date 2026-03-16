@@ -571,7 +571,7 @@ const HomePage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
           <div className="rounded-3xl overflow-hidden shadow-2xl relative group">
             <img
-              src="/img/banner.png"
+              src="/img/fortimax.png"
               alt="Sobre a Fortimax"
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               referrerPolicy="no-referrer"
