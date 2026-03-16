@@ -454,18 +454,18 @@ const HomePage = () => {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [dbCategories, setDbCategories] = useState<Category[]>([]);
 
-  useEffect(() => {
-    fetch('/api/products')
-      .then(res => res.json())
-      .then(data => {
-        if (data.products) {
-          setFeaturedProducts(data.products.filter((p: Product) => p.featured).slice(0, 4));
-        }
-      });
-
+    useEffect(() => {
     fetch('/api/categories')
       .then(res => res.json())
-      .then(data => setDbCategories(data));
+      .then(data => {
+        // Fazemos um "alias" para garantir que o front ache o nome
+        const formatadas = data.map((c: any) => ({
+          ...c,
+          nome: c.name,  // Adiciona 'nome' se o front pedir 'nome'
+          label: c.name  // Adiciona 'label' se o front pedir 'label'
+        }));
+        setDbCategories(formatadas);
+      });
   }, []);
 
   const categories = [
@@ -478,7 +478,7 @@ const HomePage = () => {
 
   // Merge icons with DB categories
   const displayCategories = dbCategories.map(dbCat => {
-    const staticCat = categories.find(c => c.name === dbCat.name);
+    const staticCat = categories.find(c => c.name === dbCat.name); // <--- AQUI
     return {
       ...dbCat,
       icon: staticCat?.icon || '📦',
