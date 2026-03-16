@@ -171,6 +171,9 @@ const Header = () => {
               src="/img/logo.png" 
               alt="FORTIMAX" 
               className="h-10 md:h-14 w-auto"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "/img/placeholder-produto.jpg";
+              }}
             />
           </Link>
 
@@ -356,6 +359,9 @@ const Footer = () => {
                 src="/img/logo.png" 
                 alt="FORTIMAX" 
                 className="logo brightness-0 invert"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "/img/placeholder-produto.jpg";
+                }}
               />
             </Link>
             <p className="text-brand-light/80 text-sm leading-relaxed">
@@ -491,7 +497,7 @@ const HomePage = () => {
       {/* Hero Banner */}
       <section className="relative h-[400px] md:h-[500px] overflow-hidden">
         <img
-          src="/img/fortimax.png"
+          src="https://picsum.photos/seed/fortimax-banner/1920/1080"
           alt="Banner FORTIMAX"
           className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
@@ -567,7 +573,7 @@ const HomePage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
           <div className="rounded-3xl overflow-hidden shadow-2xl relative group">
             <img
-              src="/img/fortimax.png"
+              src="https://picsum.photos/seed/fortimax-store/800/600"
               alt="Sobre a Fortimax"
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               referrerPolicy="no-referrer"
@@ -603,19 +609,6 @@ const HomePage = () => {
 const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
   const { addToCart } = useCart();
 
-  // Lógica para tratar o campo images que vem como string JSON do SQLite
-  const getImageUrl = (imagesData: any) => {
-    try {
-      if (typeof imagesData === 'string') {
-        const parsed = JSON.parse(imagesData); // Converte '["..."]' em um array real
-        return parsed[0];
-      }
-      return imagesData[0]; // Se já for um array, retorna o primeiro
-    } catch (e) {
-      return "/img/logo.png"; // Fallback se o JSON estiver corrompido
-    }
-  };
-
   return (
     <motion.div
       whileHover={{ y: -5 }}
@@ -623,7 +616,7 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
     >
       <Link to={`/produto/${product.id}`} className="relative h-48 md:h-64 overflow-hidden block">
         <img
-          src={getImageUrl(product.images)}
+          src={product.images[0]}
           alt={product.name}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           referrerPolicy="no-referrer"
@@ -646,7 +639,7 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
               </span>
             )}
             <div className="price-fluid font-black text-brand-dark">
-              <p>R$ {product.price ? Number(product.price).toFixed(2) : "0.00"}</p>
+              {product.oldPrice ? 'Por: ' : ''}R$ {product.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-1.5 md:gap-2">
@@ -690,24 +683,20 @@ const ProductsPage = () => {
   useEffect(() => {
     const params = new URLSearchParams();
     if (activeCategory !== 'Todos') {
-      const cat = dbCategories.find(c => c.name === activeCategory);
-      if (cat) params.append('categoryId', cat.id.toString());
+      params.append('categoria', activeCategory);
     }
     if (searchTerm) params.append('search', searchTerm);
     params.append('page', currentPage.toString());
     params.append('limit', '40');
 
-      fetch(`/api/products?${params.toString()}`)
+    fetch(`/api/produtos?${params.toString()}`)
       .then(res => res.json())
       .then(data => {
-        // CORREÇÃO: Altere de data.produtos para data.products
-        console.log("Dados recebidos da API:", data); // Isso vai confirmar o formato no F12
-        
-        setProducts(data.products || []); // O '|| []' previne que o app quebre se vier vazio
-        setTotalPages(data.pagination?.totalPages || 1);
+        setProducts(data.produtos);
+        setTotalPages(data.pagination.totalPages);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       });
-  }, [activeCategory, searchTerm, currentPage, dbCategories]);
+  }, [activeCategory, searchTerm, currentPage]);
 
   useEffect(() => {
     fetch('/api/categorias')
@@ -715,17 +704,23 @@ const ProductsPage = () => {
       .then(data => setDbCategories(data));
   }, []);
 
-  const handleCategoryChange = (cat: string) => {
-    setActiveCategory(cat);
+  const handleCategoryChange = (catSlug: string) => {
+    setActiveCategory(catSlug);
     setCurrentPage(1);
     setIsFilterOpen(false);
-    setSearchParams({ cat, search: searchTerm, page: '1' });
+    setSearchParams({ cat: catSlug, search: searchTerm, page: '1' });
   };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setSearchParams({ cat: activeCategory, search: searchTerm, page: page.toString() });
+  };
+
+  const getActiveCategoryName = () => {
+    if (activeCategory === 'Todos') return 'Todas Categorias';
+    const cat = dbCategories.find(c => c.slug === activeCategory);
+    return cat ? cat.name : activeCategory;
   };
 
   return (
@@ -744,7 +739,7 @@ const ProductsPage = () => {
           >
             <div className="flex items-center">
               <Filter size={18} className="mr-3 text-brand-primary" />
-              <span>{activeCategory === 'Todos' ? 'Todas Categorias' : activeCategory}</span>
+              <span>{getActiveCategoryName()}</span>
             </div>
             <ChevronDown size={18} className={`transition-transform ${isFilterOpen ? 'rotate-180' : ''}`} />
           </button>
@@ -760,8 +755,8 @@ const ProductsPage = () => {
               {dbCategories.map(cat => (
                 <button
                   key={cat.id}
-                  onClick={() => handleCategoryChange(cat.name)}
-                  className={`w-full text-left px-6 py-3 text-sm font-bold uppercase tracking-wider hover:bg-brand-bg transition-colors ${activeCategory === cat.name ? 'text-brand-primary bg-brand-bg' : 'text-gray-600'}`}
+                  onClick={() => handleCategoryChange(cat.slug)}
+                  className={`w-full text-left px-6 py-3 text-sm font-bold uppercase tracking-wider hover:bg-brand-bg transition-colors ${activeCategory === cat.slug ? 'text-brand-primary bg-brand-bg' : 'text-gray-600'}`}
                 >
                   {cat.name}
                 </button>
@@ -851,33 +846,21 @@ const OffersPage = () => {
   useEffect(() => {
     const params = new URLSearchParams();
     if (activeCategory !== 'Todos') {
-      const cat = dbCategories.find(c => c.name === activeCategory);
-      if (cat) params.append('categoryId', cat.id.toString());
+      params.append('categoria', activeCategory);
     }
     if (searchTerm) params.append('search', searchTerm);
     params.append('page', currentPage.toString());
     params.append('limit', '40');
     params.append('onlyOffers', 'true');
 
-    fetch(`/api/products?${params.toString()}`)
+    fetch(`/api/produtos?${params.toString()}`)
       .then(res => res.json())
       .then(data => {
-        // CORREÇÃO: Mude de data.produtos para data.products
-        console.log("DEBUG API OFERTAS:", data); // Isso ajudará a ver o que chega
-        
-        // Se 'data.products' não existir, usamos um array vazio para não quebrar o .map()
-        setProducts(data.products || []); 
-        
-        // Verifique se o pagination existe para evitar erro
-        setTotalPages(data.pagination?.totalPages || 1);
-        
+        setProducts(data.produtos);
+        setTotalPages(data.pagination.totalPages);
         window.scrollTo({ top: 0, behavior: 'smooth' });
-      })
-      .catch(err => {
-        console.error("Erro ao buscar ofertas:", err);
-        setProducts([]); // Garante que a tela não quebre se a API falhar
       });
-  }, [activeCategory, searchTerm, currentPage, dbCategories]);
+  }, [activeCategory, searchTerm, currentPage]);
 
   useEffect(() => {
     fetch('/api/categorias')
@@ -885,17 +868,23 @@ const OffersPage = () => {
       .then(data => setDbCategories(data));
   }, []);
 
-  const handleCategoryChange = (cat: string) => {
-    setActiveCategory(cat);
+  const handleCategoryChange = (catSlug: string) => {
+    setActiveCategory(catSlug);
     setCurrentPage(1);
     setIsFilterOpen(false);
-    setSearchParams({ cat, search: searchTerm, page: '1' });
+    setSearchParams({ cat: catSlug, search: searchTerm, page: '1' });
   };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setSearchParams({ cat: activeCategory, search: searchTerm, page: page.toString() });
+  };
+
+  const getActiveCategoryName = () => {
+    if (activeCategory === 'Todos') return 'Todas Categorias';
+    const cat = dbCategories.find(c => c.slug === activeCategory);
+    return cat ? cat.name : activeCategory;
   };
 
   return (
@@ -915,7 +904,7 @@ const OffersPage = () => {
           >
             <div className="flex items-center">
               <Filter size={18} className="mr-3 text-brand-primary" />
-              <span>{activeCategory === 'Todos' ? 'Todas Categorias' : activeCategory}</span>
+              <span>{getActiveCategoryName()}</span>
             </div>
             <ChevronDown size={18} className={`transition-transform ${isFilterOpen ? 'rotate-180' : ''}`} />
           </button>
@@ -931,8 +920,8 @@ const OffersPage = () => {
               {dbCategories.map(cat => (
                 <button
                   key={cat.id}
-                  onClick={() => handleCategoryChange(cat.name)}
-                  className={`w-full text-left px-6 py-3 text-sm font-bold uppercase tracking-wider hover:bg-brand-bg transition-colors ${activeCategory === cat.name ? 'text-brand-primary bg-brand-bg' : 'text-gray-600'}`}
+                  onClick={() => handleCategoryChange(cat.slug)}
+                  className={`w-full text-left px-6 py-3 text-sm font-bold uppercase tracking-wider hover:bg-brand-bg transition-colors ${activeCategory === cat.slug ? 'text-brand-primary bg-brand-bg' : 'text-gray-600'}`}
                 >
                   {cat.name}
                 </button>
@@ -1009,31 +998,63 @@ const ProductDetailPage = () => {
   const { addToCart } = useCart();
   const navigate = useNavigate();
 
+  const getImageUrl = (images: any): string[] => {
+    try {
+      let imgArray: string[] = [];
+      
+      if (Array.isArray(images)) {
+        imgArray = images;
+      } else if (typeof images === 'string' && images.trim() !== '') {
+        if (images.startsWith('[') && images.endsWith(']')) {
+          try {
+            imgArray = JSON.parse(images);
+          } catch {
+            imgArray = [images];
+          }
+        } else {
+          imgArray = [images];
+        }
+      }
+
+      if (imgArray.length === 0) return ['/img/placeholder-produto.jpg'];
+      
+      return imgArray.map(img => {
+        if (!img || img === '') return '/img/placeholder-produto.jpg';
+        return img.startsWith('/') ? img : `/${img}`;
+      });
+    } catch (e) {
+      return ['/img/placeholder-produto.jpg'];
+    }
+  };
+
   useEffect(() => {
-    fetch(`/api/products/${id}`)
+    fetch(`/api/produtos/${id}`)
       .then(res => {
         if (!res.ok) throw new Error();
         return res.json();
       })
       .then(data => {
-        // Adapt backend fields to frontend interface if necessary
+        // Mapping DB fields to component properties
         const adaptedProduct = {
           ...data,
-          price: parseFloat(data.preco_oferta || data.preco_base),
-          oldPrice: data.preco_oferta ? parseFloat(data.preco_base) : null,
-          images: data.imagem_url ? [data.imagem_url] : ['/img/logo.png'],
-          category: data.categoria_nome,
-          oferta: data.em_oferta,
-          stock: data.estoque,
-          name: data.nome,
-          description: data.descricao
+          id: data.id,
+          name: data.nome || "",
+          description: data.descricao || "",
+          price: Number(data.preco_oferta || data.preco_base) || 0,
+          oldPrice: data.preco_oferta ? Number(data.preco_base) : null,
+          images: getImageUrl(data.imagem_url),
+          category: data.categoria_nome || "",
+          oferta: !!data.em_oferta,
+          stock: Number(data.estoque) || 0
         };
         setProduct(adaptedProduct);
       })
       .catch(() => navigate('/produtos'));
   }, [id, navigate]);
 
-  if (!product) return <div className="h-screen flex items-center justify-center font-bold text-brand-dark">Carregando...</div>;
+  if (!product) return <div className="h-screen flex items-center justify-center font-bold text-brand-dark uppercase tracking-widest">Carregando...</div>;
+
+  const currentImage = product.images[activeImage] || '/img/placeholder-produto.jpg';
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-16">
@@ -1042,25 +1063,38 @@ const ProductDetailPage = () => {
         <div className="space-y-4">
           <div className="aspect-square rounded-2xl md:rounded-3xl overflow-hidden border border-gray-100 shadow-sm bg-white">
             <img
-              src={product.images[activeImage]}
+              src={currentImage}
               alt={product.name}
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/img/placeholder-produto.jpg';
+              }}
             />
           </div>
-          <div className="flex space-x-2 md:space-x-4 overflow-x-auto pb-2 scrollbar-hide">
-            {product.images.map((img, idx) => (
-              <button
-                key={idx}
-                onClick={() => setActiveImage(idx)}
-                className={`flex-shrink-0 w-16 h-16 md:w-24 md:h-24 rounded-lg md:rounded-xl overflow-hidden border-2 transition-all ${
-                  activeImage === idx ? 'border-brand-primary shadow-lg' : 'border-transparent opacity-60 hover:opacity-100'
-                }`}
-              >
-                <img src={img} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-              </button>
-            ))}
-          </div>
+          {product.images.length > 1 && (
+            <div className="flex space-x-2 md:space-x-4 overflow-x-auto pb-2 scrollbar-hide">
+              {product.images.map((img, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setActiveImage(idx)}
+                  className={`flex-shrink-0 w-16 h-16 md:w-24 md:h-24 rounded-lg md:rounded-xl overflow-hidden border-2 transition-all ${
+                    activeImage === idx ? 'border-brand-primary shadow-lg' : 'border-transparent opacity-60 hover:opacity-100'
+                  }`}
+                >
+                  <img 
+                    src={img} 
+                    alt="" 
+                    className="w-full h-full object-cover" 
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = '/img/placeholder-produto.jpg';
+                    }}
+                  />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Info */}
@@ -1073,11 +1107,11 @@ const ProductDetailPage = () => {
           <div className="flex flex-col">
             {product.oldPrice && (
               <span className="text-sm md:text-lg text-gray-400 line-through font-medium">
-                De: R$ {product.oldPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                De: R$ {Number(product.oldPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </span>
             )}
             <div className="text-3xl md:text-5xl font-black text-brand-dark tracking-tighter">
-              <p>R$ {product.price ? Number(product.price).toFixed(2) : "0.00"}</p>
+              {product.oldPrice ? 'Por: ' : ''}R$ {Number(product.price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
           </div>
 
@@ -1116,8 +1150,15 @@ const ProductDetailPage = () => {
 
 const CartPage = () => {
   const { cart, removeFromCart, updateQuantity, totalPrice, clearCart } = useCart();
+  const [customerName, setCustomerName] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('Dinheiro');
 
   const handleCheckout = async () => {
+    if (cart.length === 0) {
+      alert('Seu carrinho está vazio!');
+      return;
+    }
+
     try {
       // Deduct stock in backend
       const res = await fetch('/api/finalizar-pedido', {
@@ -1133,16 +1174,25 @@ const CartPage = () => {
       }
 
       const phoneNumber = '5588988253050';
-      let message = '*NOVO PEDIDO - FORTIMAX*\n\n';
-      message += 'Olá, gostaria de fazer um pedido.\n\n';
-      message += '*PRODUTOS SELECIONADOS:*\n';
+      
+      // Build professional message
+      let message = '🚀 *NOVO PEDIDO - FORTIMAX*\n\n';
+      
+      if (customerName) {
+        message += `👤 *Cliente:* ${customerName}\n`;
+      }
+      
+      message += `💳 *Forma de Pagamento:* ${paymentMethod}\n\n`;
+      message += '📦 *ITENS DO PEDIDO:*\n';
       
       cart.forEach(item => {
-        message += `✅ ${item.quantity}x ${item.name} - R$ ${(item.price * item.quantity).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
+        const unitPrice = Number(item.price);
+        message += `* [${item.quantity}x] ${item.name} - R$ ${unitPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
       });
 
-      message += `\n*TOTAL ESTIMADO: R$ ${totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n\n`;
-      message += '_Poderia confirmar a disponibilidade e o frete para minha região?_';
+      const total = Number(totalPrice);
+      message += `\n💰 *TOTAL DO PEDIDO: R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n\n`;
+      message += '📍 _Por favor, confirme a disponibilidade e o frete para minha região._';
 
       const encodedMessage = encodeURIComponent(message);
       const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
@@ -1182,7 +1232,7 @@ const CartPage = () => {
                 <h3 className="font-bold text-brand-dark text-sm md:text-lg uppercase tracking-tight line-clamp-2">{item.name}</h3>
                 <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mt-1">{item.category}</p>
                 <div className="mt-2 text-brand-primary font-black text-sm md:text-base">
-                  R$ {item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  R$ {Number(item.price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </div>
               </div>
               <div className="flex items-center space-x-4 w-full sm:w-auto justify-between sm:justify-end">
@@ -1206,14 +1256,41 @@ const CartPage = () => {
 
         <div className="bg-white p-6 md:p-8 rounded-3xl border border-brand-primary/10 shadow-xl h-fit space-y-6 box-border">
           <h3 className="text-lg md:text-xl font-black text-brand-dark border-b pb-4 uppercase tracking-wider text-center md:text-left">Resumo do Pedido</h3>
-          <div className="space-y-3 md:space-y-4">
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Seu Nome (Opcional)</label>
+              <input 
+                type="text" 
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="Ex: João Silva"
+                className="w-full px-4 py-3 bg-brand-bg border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Forma de Pagamento</label>
+              <select 
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="w-full px-4 py-3 bg-brand-bg border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20 font-medium"
+              >
+                <option value="Dinheiro">Dinheiro</option>
+                <option value="Pix">Pix</option>
+                <option value="Cartão de Crédito">Cartão de Crédito</option>
+                <option value="Cartão de Débito">Cartão de Débito</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-3 md:space-y-4 pt-4 border-t border-gray-100">
             <div className="flex justify-between text-gray-600 font-medium text-sm md:text-base">
               <span>Subtotal</span>
-              <span>R$ {totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+              <span>R$ {Number(totalPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
             <div className="border-t border-brand-primary/10 pt-4 flex justify-between text-xl md:text-2xl font-black text-brand-dark">
               <span>Total</span>
-              <span>R$ {totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+              <span>R$ {Number(totalPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
           </div>
           
@@ -1225,7 +1302,8 @@ const CartPage = () => {
 
           <button 
             onClick={handleCheckout}
-            className="w-full bg-brand-primary hover:bg-brand-dark text-white py-4 md:py-5 rounded-xl font-bold text-sm md:text-lg transition-all shadow-xl shadow-brand-primary/20 flex items-center justify-center space-x-3 uppercase tracking-widest"
+            disabled={cart.length === 0}
+            className="w-full bg-brand-primary hover:bg-brand-dark text-white py-4 md:py-5 rounded-xl font-bold text-sm md:text-lg transition-all shadow-xl shadow-brand-primary/20 flex items-center justify-center space-x-3 uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Phone size={18} className="flex-shrink-0" />
             <span className="whitespace-nowrap">Finalizar no WhatsApp</span>
@@ -1417,7 +1495,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
       <aside className="w-full md:w-64 bg-brand-dark text-white flex flex-col">
         <div className="p-6 border-b border-brand-primary/20">
           <Link to="/" className="flex items-center">
-            <img src="/img/logo.png" alt="FORTIMAX" className="h-10 brightness-0 invert" />
+            <img src="/img/logo.png" alt="FORTIMAX" className="h-10 brightness-0 invert" onError={e => (e.target as any).src = "/img/placeholder-produto.jpg"} />
           </Link>
           <div className="mt-4">
             <p className="text-xs font-bold text-brand-light uppercase tracking-widest">Olá, {user?.nome}</p>
@@ -1675,7 +1753,9 @@ const AdminProducts = () => {
                   </td>
                   <td className="px-6 py-4 text-right space-x-2">
                     <button onClick={() => handleEdit(p)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"><Edit size={18} /></button>
-                    <button onClick={() => handleDelete(p.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={18} /></button>
+                    {(user?.nivel === 'admin' || user?.nivel === 'gerente') && (
+                      <button onClick={() => handleDelete(p.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={18} /></button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -1708,7 +1788,9 @@ const AdminProducts = () => {
                 </div>
                 <div className="flex space-x-2">
                   <button onClick={() => handleEdit(p)} className="p-3 bg-blue-50 text-blue-600 rounded-xl transition-colors"><Edit size={20} /></button>
-                  <button onClick={() => handleDelete(p.id)} className="p-3 bg-red-50 text-red-600 rounded-xl transition-colors"><Trash2 size={20} /></button>
+                  {(user?.nivel === 'admin' || user?.nivel === 'gerente') && (
+                    <button onClick={() => handleDelete(p.id)} className="p-3 bg-red-50 text-red-600 rounded-xl transition-colors"><Trash2 size={20} /></button>
+                  )}
                 </div>
               </div>
             </div>
@@ -1845,13 +1927,15 @@ const AdminCategories = () => {
     <div className="space-y-10">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-black text-brand-dark uppercase">Categorias</h1>
-        <button 
-          onClick={() => { setEditingCategory(null); setFormData({ name: '', active: true }); setIsModalOpen(true); }}
-          className="bg-brand-primary text-white px-6 py-3 rounded-xl font-bold flex items-center space-x-2 hover:bg-brand-dark transition-all uppercase tracking-widest text-sm"
-        >
-          <PlusCircle size={20} />
-          <span>Nova Categoria</span>
-        </button>
+        {(user?.nivel === 'admin' || user?.nivel === 'gerente') && (
+          <button 
+            onClick={() => { setEditingCategory(null); setFormData({ name: '', active: true }); setIsModalOpen(true); }}
+            className="bg-brand-primary text-white px-6 py-3 rounded-xl font-bold flex items-center space-x-2 hover:bg-brand-dark transition-all uppercase tracking-widest text-sm"
+          >
+            <PlusCircle size={20} />
+            <span>Nova Categoria</span>
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-3xl shadow-sm border border-brand-primary/5 overflow-hidden">
@@ -1873,8 +1957,14 @@ const AdminCategories = () => {
                   </span>
                 </td>
                 <td className="px-6 py-4 text-right space-x-2">
-                  <button onClick={() => handleEdit(cat)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"><Edit size={18} /></button>
-                  <button onClick={() => handleDelete(cat.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={18} /></button>
+                  {(user?.nivel === 'admin' || user?.nivel === 'gerente') ? (
+                    <>
+                      <button onClick={() => handleEdit(cat)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"><Edit size={18} /></button>
+                      <button onClick={() => handleDelete(cat.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={18} /></button>
+                    </>
+                  ) : (
+                    <span className="text-gray-400 text-[10px] font-bold uppercase">Apenas Leitura</span>
+                  )}
                 </td>
               </tr>
             ))}

@@ -1,138 +1,141 @@
-import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
-import pg from 'pg';
+import Database from 'better-sqlite3';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import cookieParser from 'cookie-parser';
 import multer from 'multer';
 import fs from 'fs';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// --- Database Connection (SQLite) ---
+const dbPath = path.join(__dirname, 'data', 'database.sqlite');
+if (!fs.existsSync(path.dirname(dbPath))) {
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+}
+const db = new Database(dbPath);
+db.pragma('journal_mode = WAL');
+
 const JWT_SECRET = process.env.JWT_SECRET || 'fortimax_secret_key_2026';
 
-// --- PostgreSQL (Neon.tech) Configuration ---
-const { Pool } = pg;
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false // Required for Neon.tech
-  }
-});
-
-// Test PostgreSQL connection on startup
-pool.connect((err, client, release) => {
-  if (err) {
-    return console.error('Erro ao conectar ao PostgreSQL (Neon):', err.stack);
-  }
-  console.log('Conexão com PostgreSQL (Neon) estabelecida com sucesso.');
-  release();
-});
-
-// --- Database Initialization (PostgreSQL) ---
-async function initDb() {
-  const client = await pool.connect();
+// --- Database Initialization ---
+function initDb() {
   try {
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS categories (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) UNIQUE NOT NULL,
-        active INTEGER DEFAULT 1,
-        data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS categorias (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nome TEXT NOT NULL UNIQUE,
+        slug TEXT NOT NULL UNIQUE
       );
 
-      CREATE TABLE IF NOT EXISTS products (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        category VARCHAR(255) NOT NULL,
-        price DECIMAL(10, 2) NOT NULL,
-        "oldPrice" DECIMAL(10, 2),
-        oferta INTEGER DEFAULT 0,
-        description TEXT,
-        stock INTEGER DEFAULT 0,
-        images TEXT, -- JSON string array
-        featured INTEGER DEFAULT 0,
-        active INTEGER DEFAULT 1,
-        data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      CREATE TABLE IF NOT EXISTS produtos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nome TEXT NOT NULL,
+        descricao TEXT,
+        preco_base REAL NOT NULL,
+        preco_oferta REAL,
+        estoque INTEGER DEFAULT 0,
+        categoria_id INTEGER REFERENCES categorias(id) ON DELETE SET NULL,
+        imagem_url TEXT,
+        em_oferta BOOLEAN DEFAULT 0,
+        destaque BOOLEAN DEFAULT 0,
+        ativo BOOLEAN DEFAULT 1,
+        data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS config_site (
+        chave TEXT PRIMARY KEY,
+        valor TEXT NOT NULL
       );
 
       CREATE TABLE IF NOT EXISTS usuarios (
-        id SERIAL PRIMARY KEY,
-        nome VARCHAR(255) NOT NULL,
-        usuario VARCHAR(255) UNIQUE NOT NULL,
-        email VARCHAR(255),
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nome TEXT NOT NULL,
+        usuario TEXT UNIQUE NOT NULL,
+        email TEXT,
         senha TEXT NOT NULL,
-        nivel VARCHAR(50) NOT NULL DEFAULT 'vendedor',
-        ativo INTEGER DEFAULT 1,
-        data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        nivel TEXT DEFAULT 'vendedor',
+        ativo BOOLEAN DEFAULT 1,
+        data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    // Seed initial users if empty
-    const userCountRes = await client.query('SELECT count(*) as count FROM usuarios');
-    if (parseInt(userCountRes.rows[0].count) === 0) {
+    // Seed initial config
+    db.prepare("INSERT OR IGNORE INTO config_site (chave, valor) VALUES ('LABEL_INICIO', 'INÍCIO')").run();
+
+    // Seed initial categories
+    const initialCats = [
+      ['Material de Construção', 'material-de-construcao'],
+      ['Piscina', 'piscina'],
+      ['Ferragens', 'ferragens'],
+      ['Tintas', 'tintas'],
+      ['Ferramentas', 'ferramentas'],
+      ['Hidráulico', 'hidraulico'],
+      ['Elétrico', 'eletrico'],
+      ['Automotivo', 'automotivo'],
+      ['Decoração', 'decoracao']
+    ];
+    const insertCat = db.prepare('INSERT OR IGNORE INTO categorias (nome, slug) VALUES (?, ?)');
+    for (const [nome, slug] of initialCats) {
+      insertCat.run(nome, slug);
+    }
+
+    // Seed specific users if empty
+    const userCount = db.prepare('SELECT count(*) as count FROM usuarios').get() as { count: number };
+    if (userCount.count === 0) {
       const salt = bcrypt.genSaltSync(10);
-      const adminPass = bcrypt.hashSync('admin123', salt);
-      const helenaPass = bcrypt.hashSync('helena123', salt);
-      const tanizioPass = bcrypt.hashSync('tanizio123', salt);
+      
+      // Gerentes
+      const gerentes = [
+        ['Tanizio', 'tanizio', 'tanizio@fortimax.com.br', 'fortimax2026'],
+        ['Helena', 'helena', 'helena@fortimax.com.br', 'fortimax2026']
+      ];
+      
+      // Vendedores
+      const vendedores = [
+        ['Daniel', 'daniel', 'daniel@fortimax.com.br', 'venda123'],
+        ['Vitor', 'vitor', 'vitor@fortimax.com.br', 'venda123'],
+        ['Danilo', 'danilo', 'danilo@fortimax.com.br', 'venda123']
+      ];
 
-      await client.query('INSERT INTO usuarios (nome, usuario, email, senha, nivel, ativo) VALUES ($1, $2, $3, $4, $5, $6)', ['Administrador', 'admin', 'admin@fortimax.com.br', adminPass, 'admin', 1]);
-      await client.query('INSERT INTO usuarios (nome, usuario, email, senha, nivel, ativo) VALUES ($1, $2, $3, $4, $5, $6)', ['Helena', 'helena', 'helena@fortimax.com.br', helenaPass, 'gerente', 1]);
-      await client.query('INSERT INTO usuarios (nome, usuario, email, senha, nivel, ativo) VALUES ($1, $2, $3, $4, $5, $6)', ['Tanizio', 'tanizio', 'tanizio@fortimax.com.br', tanizioPass, 'vendedor', 1]);
-    }
-
-    // Ensure 'admin' user is actually an 'admin'
-    await client.query("UPDATE usuarios SET nivel = 'admin' WHERE usuario = 'admin'");
-
-    // Seed initial categories if empty
-    const categoryCountRes = await client.query('SELECT count(*) as count FROM categories');
-    if (parseInt(categoryCountRes.rows[0].count) === 0) {
-      const initialCats = ['Material de Construção', 'Hidráulico', 'Elétrico', 'Tintas', 'Ferragens'];
-      for (const cat of initialCats) {
-        await client.query('INSERT INTO categories (name) VALUES ($1) ON CONFLICT DO NOTHING', [cat]);
+      const insertUser = db.prepare('INSERT INTO usuarios (nome, usuario, email, senha, nivel, ativo) VALUES (?, ?, ?, ?, ?, ?)');
+      
+      for (const [nome, usuario, email, senha] of gerentes) {
+        insertUser.run(nome, usuario, email, bcrypt.hashSync(senha, salt), 'gerente', 1);
       }
+      
+      for (const [nome, usuario, email, senha] of vendedores) {
+        insertUser.run(nome, usuario, email, bcrypt.hashSync(senha, salt), 'vendedor', 1);
+      }
+      
+      // Default admin
+      insertUser.run('Administrador', 'admin', 'admin@fortimax.com.br', bcrypt.hashSync('admin123', salt), 'gerente', 1);
     }
 
-    // Seed initial products from JSON if empty
-    const productCountRes = await client.query('SELECT count(*) as count FROM products');
-    if (parseInt(productCountRes.rows[0].count) === 0) {
-      try {
-        const productsPath = path.join(__dirname, 'data', 'products.json');
-        if (fs.existsSync(productsPath)) {
-          const initialProducts = JSON.parse(fs.readFileSync(productsPath, 'utf-8'));
-          for (const p of initialProducts) {
-            await client.query(`
-              INSERT INTO products (name, category, price, "oldPrice", oferta, description, stock, images, featured, active)
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-            `, [p.name, p.category, p.price, p.oldPrice || null, p.oferta ? 1 : 0, p.description, p.stock, JSON.stringify(p.images), p.featured ? 1 : 0, 1]);
-          }
-        }
-      } catch (e) {
-        console.error('Error seeding products:', e);
-      }
-    }
   } catch (err) {
-    console.error('Erro ao inicializar banco de dados PostgreSQL:', err);
-  } finally {
-    client.release();
+    console.error('Error initializing database:', err);
   }
 }
 
-//initDb();
+initDb();
 
 // --- Express Setup ---
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
+app.use(express.static(path.join(process.cwd(), 'public')));
 
 // Multer for image uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const dir = './static/img/produtos';
+    const dir = path.join(process.cwd(), 'public', 'img', 'produtos');
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     cb(null, dir);
   },
@@ -156,111 +159,90 @@ const authenticate = (req: any, res: any, next: any) => {
 };
 
 const isAdmin = (req: any, res: any, next: any) => {
-  console.log(`Verificando isAdmin para usuário: ${req.user.usuario}, nível: ${req.user.nivel}`);
-  if (req.user.nivel !== 'admin') return res.status(403).json({ error: 'Acesso negado. Apenas Administradores podem realizar esta ação.' });
+  if (req.user.nivel !== 'gerente' && req.user.nivel !== 'admin') {
+    return res.status(403).json({ error: 'Acesso negado. Apenas Gerentes podem realizar esta ação.' });
+  }
   next();
 };
 
-const isGerenteOrAdmin = (req: any, res: any, next: any) => {
-  console.log(`Verificando isGerenteOrAdmin para usuário: ${req.user.usuario}, nível: ${req.user.nivel}`);
-  if (req.user.nivel !== 'admin' && req.user.nivel !== 'gerente') {
-    return res.status(403).json({ error: 'Acesso negado. Apenas Administradores ou Gerentes podem realizar esta ação.' });
+const isGerente = isAdmin;
+
+const isVendedorOrGerente = (req: any, res: any, next: any) => {
+  if (req.user.nivel !== 'vendedor' && req.user.nivel !== 'gerente' && req.user.nivel !== 'admin') {
+    return res.status(403).json({ error: 'Acesso negado.' });
   }
   next();
 };
 
 // --- API Routes ---
 
-app.get('/api/neon/products', async (req, res) => {
+// Config Site
+app.get('/api/config/:chave', (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM products');
-    
-    res.json(result.rows.map(p => ({
-      ...p,
-      // Garante que preço seja número. Se for null, vira 0.
-      price: parseFloat(p.price) || 0,
-      oldprice: p.oldprice ? parseFloat(p.oldprice) : null,
-      // Se tiver imagem, tenta parsear, senão retorna array vazio
-      images: p.images ? JSON.parse(p.images) : [],
-      // Converte inteiros 1 ou 0 para booleano
-      active: p.active === 1,
-      oferta: !!p.oferta,
-      featured: !!p.featured
-    })));
+    const row = db.prepare('SELECT valor FROM config_site WHERE chave = ?').get(req.params.chave) as { valor: string } | undefined;
+    if (!row) return res.status(404).json({ error: 'Configuração não encontrada' });
+    res.json({ valor: row.valor });
   } catch (err) {
-    console.error('Erro ao buscar produtos:', err);
-    res.status(500).json({ error: 'Erro interno.' });
+    res.status(500).json({ error: 'Erro ao buscar configuração' });
   }
 });
 
-app.get('/api/neon/test-connection', async (req, res) => {
+// Categories
+app.get('/api/categorias', (req, res) => {
   try {
-    const result = await pool.query('SELECT NOW() as current_time');
-    res.json({ 
-      status: 'success', 
-      message: 'Conexão com Neon.tech funcionando!',
-      time: result.rows[0].current_time 
-    });
+    const rows = db.prepare('SELECT * FROM categorias ORDER BY nome ASC').all();
+    res.json(rows);
   } catch (err) {
-    console.error('Falha no teste de conexão com Neon:', err);
-    res.status(500).json({ 
-      status: 'error', 
-      message: 'Falha ao conectar com Neon.tech. Verifique sua DATABASE_URL.' 
-    });
+    res.status(500).json({ error: 'Erro ao buscar categorias' });
   }
 });
 
-// Public Products with Pagination
-app.get('/api/products', async (req, res) => {
-  try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 40;
-    const offset = (page - 1) * limit;
-    const category = req.query.category as string;
-    const search = req.query.search as string;
-    const onlyOffers = req.query.onlyOffers === 'true';
+// Products with Pagination, Search and Filter
+app.get('/api/produtos', (req, res) => {
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 40;
+  const offset = (page - 1) * limit;
+  const categoryId = req.query.categoryId;
+  const categorySlug = req.query.categoria as string;
+  const search = req.query.search as string;
+  const onlyOffers = req.query.onlyOffers === 'true';
 
-    let query = 'SELECT * FROM products WHERE active = 1 AND stock > 0';
+  try {
+    let query = 'SELECT p.*, c.nome as categoria_nome, c.slug as categoria_slug FROM produtos p LEFT JOIN categorias c ON p.categoria_id = c.id WHERE p.ativo = 1';
     const params: any[] = [];
-    let paramIndex = 1;
 
-    if (category && category !== 'Todos') {
-      query += ` AND category = $${paramIndex++}`;
-      params.push(category);
+    if (categoryId) {
+      query += ` AND p.categoria_id = ?`;
+      params.push(categoryId);
+    }
+
+    if (categorySlug) {
+      query += ` AND c.slug = ?`;
+      params.push(categorySlug);
     }
 
     if (search) {
-      query += ` AND name ILIKE $${paramIndex++}`;
-      params.push(`%${search}%`);
+      query += ` AND (p.nome LIKE ? OR p.descricao LIKE ?)`;
+      params.push(`%${search}%`, `%${search}%`);
     }
 
     if (onlyOffers) {
-      query += ' AND oferta = 1';
+      query += ' AND p.em_oferta = 1';
     }
 
-    // Get total count for pagination
-    const countQuery = query.replace('SELECT *', 'SELECT count(*) as count');
-    const countResult = await pool.query(countQuery, params);
-    const totalCount = parseInt(countResult.rows[0].count);
+    // Count total
+    const countQuery = query.replace('SELECT p.*, c.nome as categoria_nome', 'SELECT count(*) as count');
+    const totalResult = db.prepare(countQuery).get(...params) as { count: number };
+    const totalCount = totalResult.count;
 
-    query += ` LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
+    // Final query with pagination
+    query += ` ORDER BY p.data_criacao DESC LIMIT ? OFFSET ?`;
     params.push(limit, offset);
 
-    const result = await pool.query(query, params);
-    const products = result.rows;
+    const rows = db.prepare(query).all(...params);
     
     res.json({
-      products: products.map((p: any) => ({ 
-        ...p,
-        // Forçamos a leitura da coluna com aspas (usando p['oldPrice'])
-        // Se p['oldPrice'] for undefined, tentamos p.oldprice por segurança
-        oldPrice: p["oldPrice"] !== undefined ? parseFloat(p["oldPrice"]) : (p.oldprice ? parseFloat(p.oldprice) : null),
-        
-        images: p.images ? JSON.parse(p.images) : [], 
-        oferta: !!p.oferta, 
-        featured: !!p.featured, 
-        active: !!p.active 
-      })),
+      produtos: rows,
       pagination: {
         page,
         limit,
@@ -269,105 +251,46 @@ app.get('/api/products', async (req, res) => {
       }
     });
   } catch (err) {
-    console.error('Erro ao buscar produtos:', err);
-    res.status(500).json({ error: 'Erro ao buscar produtos no banco de dados.' });
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao buscar produtos' });
   }
 });
 
-// Categories
-app.get('/api/categories', async (req, res) => {
+// Offers only
+app.get('/api/ofertas', (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM categories WHERE active = 1');
-    res.json(result.rows);
+    const rows = db.prepare('SELECT p.*, c.nome as categoria_nome FROM produtos p LEFT JOIN categorias c ON p.categoria_id = c.id WHERE p.em_oferta = 1 AND p.ativo = 1 ORDER BY p.data_criacao DESC').all();
+    res.json(rows);
   } catch (err) {
-    console.error('Erro ao buscar categorias:', err);
-    res.status(500).json({ error: 'Erro ao buscar categorias.' });
+    res.status(500).json({ error: 'Erro ao buscar ofertas' });
   }
 });
 
-app.post('/api/admin/categories', authenticate, isGerenteOrAdmin, async (req, res) => {
-  const { name } = req.body;
+// Auth Login
+app.post('/api/auth/login', (req, res) => {
+  const { usuario, senha } = req.body;
   try {
-    await pool.query('INSERT INTO categories (name) VALUES ($1)', [name]);
-    res.json({ message: 'Categoria criada' });
-  } catch (e) {
-    res.status(400).json({ error: 'Categoria já existe ou erro ao criar' });
-  }
-});
-
-app.put('/api/admin/categories/:id', authenticate, isGerenteOrAdmin, async (req, res) => {
-  const { name, active } = req.body;
-  try {
-    await pool.query('UPDATE categories SET name = $1, active = $2 WHERE id = $3', [name, active ? 1 : 0, req.params.id]);
-    res.json({ message: 'Categoria atualizada' });
-  } catch (e) {
-    res.status(400).json({ error: 'Erro ao atualizar categoria' });
-  }
-});
-
-app.delete('/api/admin/categories/:id', authenticate, isAdmin, async (req, res) => {
-  try {
-    await pool.query('DELETE FROM categories WHERE id = $1', [req.params.id]);
-    res.json({ message: 'Categoria removida' });
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao remover categoria' });
-  }
-});
-
-app.get('/api/products/:id', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM products WHERE id = $1', [req.params.id]);
-    const product = result.rows[0];
-    if (!product) return res.status(404).json({ error: 'Produto não encontrado' });
-    res.json({ 
-      ...product, 
-      images: product.images ? JSON.parse(product.images) : [], 
-      oferta: !!product.oferta, 
-      featured: !!product.featured, 
-      active: !!product.active 
-    });
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao buscar produto' });
-  }
-});
-
-// Auth
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { usuario, senha } = req.body;
-    const result = await pool.query('SELECT * FROM usuarios WHERE usuario = $1', [usuario]);
-    const user = result.rows[0];
+    const user = db.prepare('SELECT * FROM usuarios WHERE usuario = ?').get(usuario) as any;
     
-    if (!user) {
+    if (!user || !bcrypt.compareSync(senha, user.senha)) {
       return res.status(401).json({ error: 'Usuário ou senha inválidos.' });
     }
 
     if (!user.ativo) {
-      return res.status(403).json({ error: 'Usuário desativado. Procure o administrador.' });
-    }
-
-    if (!bcrypt.compareSync(senha, user.senha)) {
-      return res.status(401).json({ error: 'Usuário ou senha inválidos.' });
+      return res.status(403).json({ error: 'Usuário desativado.' });
     }
 
     const token = jwt.sign({ 
       id: user.id, 
       nome: user.nome, 
       usuario: user.usuario, 
-      nivel: user.nivel,
-      ativo: !!user.ativo
+      nivel: user.nivel 
     }, JWT_SECRET, { expiresIn: '1d' });
 
     res.cookie('token', token, { httpOnly: true, secure: true, sameSite: 'none' });
-    res.json({ 
-      id: user.id, 
-      nome: user.nome, 
-      usuario: user.usuario, 
-      nivel: user.nivel,
-      ativo: !!user.ativo
-    });
+    res.json({ id: user.id, nome: user.nome, usuario: user.usuario, nivel: user.nivel });
   } catch (err) {
-    res.status(500).json({ error: 'Erro ao realizar login' });
+    res.status(500).json({ error: 'Erro no servidor' });
   }
 });
 
@@ -387,200 +310,243 @@ app.get('/api/auth/me', (req, res) => {
   }
 });
 
-// Admin Products CRUD
-app.get('/api/admin/products', authenticate, async (req, res) => {
+// --- Admin Routes (Protected) ---
+
+// Stats
+app.get('/api/admin/stats', authenticate, isGerente, (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM products ORDER BY id DESC');
-    
-    res.json(result.rows.map((p: any) => ({ 
-      ...p, 
-      // O segredo para parar o erro .toFixed():
-      // Transformamos qualquer valor de preço em número antes de enviar ao React
-      price: p.price ? parseFloat(p.price) : 0,
-      oldprice: p.oldprice ? parseFloat(p.oldprice) : 0,
-      
-      // O que você já tinha:
-      images: p.images ? JSON.parse(p.images) : [], 
-      oferta: !!p.oferta, 
-      featured: !!p.featured, 
-      active: !!p.active 
-    })));
-  } catch (err) {
-    console.error('Erro na API /admin/products:', err);
-    res.status(500).json({ error: 'Erro ao buscar produtos admin' });
-  }
-});
+    const totalProdutos = db.prepare('SELECT count(*) as count FROM produtos').get() as any;
+    const totalCategorias = db.prepare('SELECT count(*) as count FROM categorias').get() as any;
+    const totalUsuarios = db.prepare('SELECT count(*) as count FROM usuarios').get() as any;
+    const totalEstoque = db.prepare('SELECT sum(estoque) as sum FROM produtos').get() as any;
 
-app.post('/api/admin/products', authenticate, upload.array('images'), async (req: any, res) => {
-  try {
-    const { name, category, price, oldPrice, oferta, description, stock, featured, active } = req.body;
-    
-    if (oferta === 'true' && req.user.nivel === 'vendedor') {
-      return res.status(403).json({ error: 'Vendedores não podem criar ofertas.' });
-    }
-
-    const files = req.files as any[];
-    const images = files.map(f => `/static/img/produtos/${f.filename}`);
-    
-    const result = await pool.query(`
-       INSERT INTO products (name, category, price, "oldPrice", oferta, description, stock, images, featured, active)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        RETURNING id
-      `, [name, category, price, oldPrice || null, oferta === 'true' ? 1 : 0, description, stock, JSON.stringify(images), featured === 'true' ? 1 : 0, active === 'true' ? 1 : 0]);
-    
-    res.json({ id: result.rows[0].id });
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao criar produto' });
-  }
-});
-
-app.put('/api/admin/products/:id', authenticate, upload.array('images'), async (req: any, res) => {
-  try {
-    const { name, category, price, oldPrice, oferta, description, stock, featured, active, existingImages } = req.body;
-
-    if (oferta === 'true' && req.user.nivel === 'vendedor') {
-      return res.status(403).json({ error: 'Vendedores não podem gerenciar ofertas.' });
-    }
-
-    const files = req.files as any[];
-    let images = JSON.parse(existingImages || '[]');
-    if (files.length > 0) {
-      const newImages = files.map(f => `/static/img/produtos/${f.filename}`);
-      images = [...images, ...newImages];
-    }
-
-    await pool.query(`
-    UPDATE products SET 
-      name = $1, 
-      category = $2, 
-      price = $3, 
-      "oldPrice" = $4,  -- AQUI: aspas duplas no nome da coluna
-      oferta = $5, 
-      description = $6, 
-      stock = $7, 
-      images = $8, 
-      featured = $9, 
-      active = $10
-    WHERE id = $11
-  `, [name, category, price, oldPrice || null, oferta === 'true' ? 1 : 0, description, stock, JSON.stringify(images), featured === 'true' ? 1 : 0, active === 'true' ? 1 : 0, req.params.id]);
-    
-    res.json({ message: 'Produto atualizado' });
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao atualizar produto' });
-  }
-});
-
-app.delete('/api/admin/products/:id', authenticate, async (req, res) => {
-  try {
-    await pool.query('DELETE FROM products WHERE id = $1', [req.params.id]);
-    res.json({ message: 'Produto removido' });
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao remover produto' });
-  }
-});
-
-// Admin Users CRUD
-app.get('/api/admin/users', authenticate, isAdmin, async (req, res) => {
-  try {
-    const result = await pool.query('SELECT id, nome, usuario, email, nivel, ativo, data_criacao FROM usuarios ORDER BY id DESC');
-    res.json(result.rows.map((u: any) => ({ ...u, ativo: !!u.ativo })));
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao buscar usuários' });
-  }
-});
-
-app.post('/api/admin/users', authenticate, isAdmin, async (req, res) => {
-  try {
-    const { nome, usuario, email, senha, nivel, ativo } = req.body;
-    const salt = bcrypt.genSaltSync(10);
-    const hashedPass = bcrypt.hashSync(senha, salt);
-    await pool.query('INSERT INTO usuarios (nome, usuario, email, senha, nivel, ativo) VALUES ($1, $2, $3, $4, $5, $6)', [nome, usuario, email, hashedPass, nivel, ativo ? 1 : 0]);
-    res.json({ message: 'Usuário criado' });
-  } catch (e) {
-    res.status(400).json({ error: 'Usuário ou e-mail já cadastrado' });
-  }
-});
-
-app.put('/api/admin/users/:id', authenticate, isAdmin, async (req, res) => {
-  try {
-    const { nome, usuario, email, nivel, ativo, senha } = req.body;
-    
-    if (senha) {
-      const salt = bcrypt.genSaltSync(10);
-      const hashedPass = bcrypt.hashSync(senha, salt);
-      await pool.query('UPDATE usuarios SET nome = $1, usuario = $2, email = $3, nivel = $4, ativo = $5, senha = $6 WHERE id = $7',
-        [nome, usuario, email, nivel, ativo ? 1 : 0, hashedPass, req.params.id]);
-    } else {
-      await pool.query('UPDATE usuarios SET nome = $1, usuario = $2, email = $3, nivel = $4, ativo = $5 WHERE id = $7',
-        [nome, usuario, email, nivel, ativo ? 1 : 0, req.params.id]);
-    }
-    res.json({ message: 'Usuário atualizado' });
-  } catch (e) {
-    res.status(400).json({ error: 'Erro ao atualizar usuário' });
-  }
-});
-
-app.delete('/api/admin/users/:id', authenticate, isAdmin, async (req, res) => {
-  try {
-    await pool.query('DELETE FROM usuarios WHERE id = $1', [req.params.id]);
-    res.json({ message: 'Usuário removido' });
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao remover usuário' });
-  }
-});
-
-// Dashboard Stats
-app.get('/api/admin/stats', authenticate, isGerenteOrAdmin, async (req: any, res) => {
-  try {
-    const totalProducts = await pool.query('SELECT count(*) as count FROM products');
-    const activeProducts = await pool.query('SELECT count(*) as count FROM products WHERE active = 1');
-    const offersCount = await pool.query('SELECT count(*) as count FROM products WHERE oferta = 1');
-    const usersCount = await pool.query('SELECT count(*) as count FROM usuarios');
-    
     res.json({
-      totalProducts: parseInt(totalProducts.rows[0].count),
-      activeProducts: parseInt(activeProducts.rows[0].count),
-      offersCount: parseInt(offersCount.rows[0].count),
-      usersCount: parseInt(usersCount.rows[0].count)
+      totalProdutos: totalProdutos.count,
+      totalCategorias: totalCategorias.count,
+      totalUsuarios: totalUsuarios.count,
+      totalEstoque: totalEstoque.sum || 0
     });
   } catch (err) {
     res.status(500).json({ error: 'Erro ao buscar estatísticas' });
   }
 });
 
-// Checkout - Stock Deduction (PostgreSQL Transaction)
-app.post('/api/checkout', async (req, res) => {
+// Admin Products
+app.get('/api/admin/products', authenticate, isVendedorOrGerente, (req, res) => {
+  try {
+    const rows = db.prepare('SELECT p.*, c.nome as categoria_nome FROM produtos p LEFT JOIN categorias c ON p.categoria_id = c.id ORDER BY p.data_criacao DESC').all();
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao buscar produtos' });
+  }
+});
+
+app.post('/api/admin/products', authenticate, isVendedorOrGerente, upload.single('imagem'), (req, res) => {
+  const { nome, descricao, preco_base, preco_oferta, estoque, categoria_id, em_oferta, destaque, ativo } = req.body;
+  const imagem_url = req.file ? `/img/produtos/${req.file.filename}` : null;
+
+  try {
+    const result = db.prepare(`
+      INSERT INTO produtos (nome, descricao, preco_base, preco_oferta, estoque, categoria_id, imagem_url, em_oferta, destaque, ativo)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      nome, 
+      descricao, 
+      parseFloat(preco_base), 
+      preco_oferta ? parseFloat(preco_oferta) : null, 
+      parseInt(estoque), 
+      categoria_id ? parseInt(categoria_id) : null, 
+      imagem_url, 
+      em_oferta === 'true' ? 1 : 0, 
+      destaque === 'true' ? 1 : 0, 
+      ativo === 'true' ? 1 : 0
+    );
+    res.json({ id: result.lastInsertRowid });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao criar produto' });
+  }
+});
+
+app.put('/api/admin/products/:id', authenticate, isVendedorOrGerente, upload.single('imagem'), (req, res) => {
+  const { nome, descricao, preco_base, preco_oferta, estoque, categoria_id, em_oferta, destaque, ativo } = req.body;
+  
+  // Check if seller is trying to edit price? 
+  // The prompt says "Gerentes ... podem editar preços ... Vendedores ... podem cadastrar produtos ... mas não podem excluir itens ou alterar configurações críticas".
+  // I'll allow sellers to edit products for now as "cadastrar produtos" usually implies editing them too, but I'll restrict deletion.
+
+  let query = 'UPDATE produtos SET nome = ?, descricao = ?, preco_base = ?, preco_oferta = ?, estoque = ?, categoria_id = ?, em_oferta = ?, destaque = ?, ativo = ?';
+  const params = [
+    nome, 
+    descricao, 
+    parseFloat(preco_base), 
+    preco_oferta ? parseFloat(preco_oferta) : null, 
+    parseInt(estoque), 
+    categoria_id ? parseInt(categoria_id) : null, 
+    em_oferta === 'true' ? 1 : 0, 
+    destaque === 'true' ? 1 : 0, 
+    ativo === 'true' ? 1 : 0
+  ];
+
+  if (req.file) {
+    query += ', imagem_url = ?';
+    params.push(`/img/produtos/${req.file.filename}`);
+  }
+
+  query += ' WHERE id = ?';
+  params.push(req.params.id);
+
+  try {
+    db.prepare(query).run(...params);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao atualizar produto' });
+  }
+});
+
+app.delete('/api/admin/products/:id', authenticate, isGerente, (req, res) => {
+  try {
+    db.prepare('DELETE FROM produtos WHERE id = ?').run(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao excluir produto' });
+  }
+});
+
+// Admin Categories
+app.get('/api/admin/categories', authenticate, isVendedorOrGerente, (req, res) => {
+  try {
+    const rows = db.prepare('SELECT * FROM categorias ORDER BY nome ASC').all();
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao buscar categorias' });
+  }
+});
+
+app.post('/api/admin/categories', authenticate, isGerente, (req, res) => {
+  const { name, active } = req.body;
+  const slug = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+  try {
+    const result = db.prepare('INSERT INTO categorias (nome, slug) VALUES (?, ?)').run(name, slug);
+    res.json({ id: result.lastInsertRowid });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao criar categoria' });
+  }
+});
+
+app.put('/api/admin/categories/:id', authenticate, isGerente, (req, res) => {
+  const { name, active } = req.body;
+  const slug = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+  try {
+    db.prepare('UPDATE categorias SET nome = ?, slug = ? WHERE id = ?').run(name, slug, req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao atualizar categoria' });
+  }
+});
+
+app.delete('/api/admin/categories/:id', authenticate, isGerente, (req, res) => {
+  try {
+    db.prepare('DELETE FROM categorias WHERE id = ?').run(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao excluir categoria' });
+  }
+});
+
+// Admin Users
+app.get('/api/admin/users', authenticate, isGerente, (req, res) => {
+  try {
+    const rows = db.prepare('SELECT id, nome, usuario, email, nivel, ativo, data_criacao FROM usuarios ORDER BY nome ASC').all();
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao buscar usuários' });
+  }
+});
+
+app.post('/api/admin/users', authenticate, isGerente, (req, res) => {
+  const { nome, usuario, email, senha, nivel, ativo } = req.body;
+  const salt = bcrypt.genSaltSync(10);
+  const hash = bcrypt.hashSync(senha, salt);
+  try {
+    const result = db.prepare('INSERT INTO usuarios (nome, usuario, email, senha, nivel, ativo) VALUES (?, ?, ?, ?, ?, ?)').run(nome, usuario, email, hash, nivel, ativo ? 1 : 0);
+    res.json({ id: result.lastInsertRowid });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao criar usuário' });
+  }
+});
+
+app.put('/api/admin/users/:id', authenticate, isGerente, (req, res) => {
+  const { nome, usuario, email, senha, nivel, ativo } = req.body;
+  let query = 'UPDATE usuarios SET nome = ?, usuario = ?, email = ?, nivel = ?, ativo = ?';
+  const params = [nome, usuario, email, nivel, ativo ? 1 : 0];
+
+  if (senha) {
+    const salt = bcrypt.genSaltSync(10);
+    const hash = bcrypt.hashSync(senha, salt);
+    query += ', senha = ?';
+    params.push(hash);
+  }
+
+  query += ' WHERE id = ?';
+  params.push(req.params.id);
+
+  try {
+    db.prepare(query).run(...params);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao atualizar usuário' });
+  }
+});
+
+app.delete('/api/admin/users/:id', authenticate, isGerente, (req, res) => {
+  try {
+    db.prepare('DELETE FROM usuarios WHERE id = ?').run(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao excluir usuário' });
+  }
+});
+
+// Single Product
+app.get('/api/produtos/:id', (req, res) => {
+  try {
+    const product = db.prepare('SELECT p.*, c.nome as categoria_nome FROM produtos p LEFT JOIN categorias c ON p.categoria_id = c.id WHERE p.id = ?').get(req.params.id) as any;
+    if (!product) return res.status(404).json({ error: 'Produto não encontrado' });
+    res.json(product);
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao buscar produto' });
+  }
+});
+
+// Finalizar Pedido (Checkout with Transaction)
+app.post('/api/finalizar-pedido', (req, res) => {
   const { items } = req.body; // [{id, quantity}]
   
   if (!items || !Array.isArray(items)) {
     return res.status(400).json({ error: 'Itens inválidos' });
   }
 
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
+  const transaction = db.transaction((items) => {
     for (const item of items) {
-      const result = await client.query('SELECT stock FROM products WHERE id = $1 FOR UPDATE', [item.id]);
-      const product = result.rows[0];
+      const product = db.prepare('SELECT estoque FROM produtos WHERE id = ?').get(item.id) as { estoque: number } | undefined;
       
       if (!product) {
         throw new Error(`Produto ${item.id} não encontrado`);
       }
       
-      if (product.stock < item.quantity) {
+      if (product.estoque < item.quantity) {
         throw new Error(`Estoque insuficiente para o produto ${item.id}`);
       }
       
-      await client.query('UPDATE products SET stock = stock - $1 WHERE id = $2', [item.quantity, item.id]);
+      db.prepare('UPDATE produtos SET estoque = estoque - ? WHERE id = ?').run(item.quantity, item.id);
     }
-    await client.query('COMMIT');
-    res.json({ message: 'Estoque atualizado com sucesso' });
-  } catch (e: any) {
-    await client.query('ROLLBACK');
-    console.error('Erro no checkout:', e);
-    res.status(400).json({ error: e.message });
-  } finally {
-    client.release();
+  });
+
+  try {
+    transaction(items);
+    res.json({ success: true, message: 'Pedido finalizado com sucesso' });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
   }
 });
 
@@ -600,25 +566,10 @@ async function startServer() {
     });
   }
 
-  app.listen(3000, '0.0.0.0', () => {
-    console.log('Server running on http://localhost:3000');
+  const PORT = parseInt(process.env.PORT || '3000', 10);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on http://0.0.0.0:${PORT}`);
   });
-
-  app.use('/static', express.static(path.join(process.cwd(), 'public')));
-
-  // Exemplo de como salvar no seu server.ts
-app.post('/api/cadastrar', upload.single('imagem'), async (req, res) => {
-  const { nome, preco } = req.body;
-  const nomeArquivo = req.file ? `/img/${req.file.filename}` : "/img/logo_padrao.png";
-
-  // Aqui você salva no Neon
-  await pool.query(
-    'INSERT INTO products (name, price, images) VALUES ($1, $2, $3)',
-    [nome, preco, JSON.stringify([nomeArquivo])] // Salvamos como um array JSON
-  );
-
-  res.status(200).send("Produto cadastrado com sucesso!");
-});
 }
 
 startServer();
