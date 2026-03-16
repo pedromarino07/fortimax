@@ -697,16 +697,18 @@ const ProductsPage = () => {
     params.append('page', currentPage.toString());
     params.append('limit', '40');
 
-      fetch(`/api/products?${params.toString()}`)
+    fetch(`/api/products?${params.toString()}`)
       .then(res => res.json())
       .then(data => {
-        // CORREÇÃO: Altere de data.produtos para data.products
-        console.log("Dados recebidos da API:", data); // Isso vai confirmar o formato no F12
+        // DEBUG: Verifique no console do navegador (F12) o que a API devolve
+        console.log("Resposta da API:", data); 
         
-        setProducts(data.products || []); // O '|| []' previne que o app quebre se vier vazio
+        // Se 'data' for um array direto [p1, p2], use 'data'
+        // Se 'data' for um objeto {products: [...]}, use 'data.products'
+        setProducts(Array.isArray(data) ? data : (data.products || []));
         setTotalPages(data.pagination?.totalPages || 1);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      });
+      })
+      .catch(err => console.error("Erro no fetch de produtos:", err));
   }, [activeCategory, searchTerm, currentPage, dbCategories]);
 
   useEffect(() => {
