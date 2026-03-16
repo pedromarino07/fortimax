@@ -491,7 +491,7 @@ const HomePage = () => {
       {/* Hero Banner */}
       <section className="relative h-[400px] md:h-[500px] overflow-hidden">
         <img
-          src="/img/fortimax.png"
+          src="/img/banner.png"
           alt="Banner FORTIMAX"
           className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
@@ -571,7 +571,7 @@ const HomePage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
           <div className="rounded-3xl overflow-hidden shadow-2xl relative group">
             <img
-              src="/img/fortimax.png"
+              src="/img/banner.png"
               alt="Sobre a Fortimax"
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               referrerPolicy="no-referrer"
