@@ -19,6 +19,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       if (Array.isArray(images)) {
         imgArray = images;
       } else if (typeof images === 'string' && images.trim() !== '') {
+        // Try to parse if it looks like a JSON array
         if (images.startsWith('[') && images.endsWith(']')) {
           try {
             imgArray = JSON.parse(images);
@@ -31,18 +32,21 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       }
 
       const firstImage = imgArray[0];
-      if (!firstImage || firstImage === '') return '/img/placeholder-produto.jpg';
+      if (!firstImage || firstImage === '') return '/img/logo_padrao.png';
+      
+      // Remove any /static/ prefix if present (as requested)
+      const cleanPath = firstImage.replace(/^\/static\//, '/');
       
       // Ensure it starts with /
-      return firstImage.startsWith('/') ? firstImage : `/${firstImage}`;
+      return cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
     } catch (e) {
-      return '/img/placeholder-produto.jpg';
+      return '/img/logo_padrao.png';
     }
   };
 
   const formatPrice = (price: any) => {
     const num = Number(price);
-    if (isNaN(num)) return '0,00';
+    if (isNaN(num) || num === 0) return '0,00';
     return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
@@ -60,7 +64,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           referrerPolicy="no-referrer"
           onError={(e) => {
-            (e.target as HTMLImageElement).src = '/img/placeholder-produto.jpg';
+            (e.target as HTMLImageElement).src = '/img/logo_padrao.png';
           }}
         />
         {product.oferta && (

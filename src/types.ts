@@ -28,5 +28,6 @@ export interface CartItem extends Product {
 export interface Category {
   id: number;
   name: string;
+  slug: string;
   active: boolean;
 }
