@@ -10,6 +10,8 @@ import cookieParser from 'cookie-parser';
 import multer from 'multer';
 import fs from 'fs';
 
+const toInt = (val: any) => (val === true || val === 'true' || val === 1 || val === '1' ? 1 : 0);
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -440,10 +442,21 @@ app.post('/api/admin/products', authenticate, upload.array('images'), async (req
     const images = files.map(f => `/img/produtos/${f.filename}`);
     
     const result = await pool.query(`
-       INSERT INTO products (name, category, price, "oldPrice", oferta, description, stock, images, featured, active)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        RETURNING id
-      `, [name, category, price, oldPrice || null, oferta === 'true' ? 1 : 0, description, stock, JSON.stringify(images), featured === 'true' ? 1 : 0, active === 'true' ? 1 : 0]);
+   INSERT INTO products (name, category, price, "oldPrice", oferta, description, stock, images, featured, active)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    RETURNING id
+  `, [
+    name, 
+    category, 
+    price, 
+    oldPrice || null, 
+    toInt(oferta),        // Usando a função toInt
+    description, 
+    stock, 
+    JSON.stringify(images), 
+    toInt(featured),      // Usando a função toInt
+    toInt(active)         // Usando a função toInt
+  ]);
     
     res.json({ id: result.rows[0].id });
   } catch (err) {
@@ -471,7 +484,7 @@ app.put('/api/admin/products/:id', authenticate, upload.array('images'), async (
       name = $1, 
       category = $2, 
       price = $3, 
-      "oldPrice" = $4,  -- AQUI: aspas duplas no nome da coluna
+      "oldPrice" = $4, 
       oferta = $5, 
       description = $6, 
       stock = $7, 
@@ -479,7 +492,19 @@ app.put('/api/admin/products/:id', authenticate, upload.array('images'), async (
       featured = $9, 
       active = $10
     WHERE id = $11
-  `, [name, category, price, oldPrice || null, oferta === 'true' ? 1 : 0, description, stock, JSON.stringify(images), featured === 'true' ? 1 : 0, active === 'true' ? 1 : 0, req.params.id]);
+  `, [
+    name, 
+    category, 
+    price, 
+    oldPrice || null, 
+    toInt(oferta), 
+    description, 
+    stock, 
+    JSON.stringify(images), 
+    toInt(featured), 
+    toInt(active), 
+    req.params.id
+  ]);
     
     res.json({ message: 'Produto atualizado' });
   } catch (err) {
@@ -624,18 +649,27 @@ async function startServer() {
   app.use('/static', express.static(path.join(process.cwd(), 'public')));
 
   // Exemplo de como salvar no seu server.ts
-app.post('/api/cadastrar', upload.single('imagem'), async (req, res) => {
-  const { nome, preco } = req.body;
-  const nomeArquivo = req.file ? `/img/${req.file.filename}` : "/img/logo_padrao.png";
+  app.post('/api/cadastrar', upload.single('imagem'), async (req, res) => {
+    const { nome, preco } = req.body;
+    const nomeArquivo = req.file ? `/img/${req.file.filename}` : "/img/logo_padrao.png";
 
-  // Aqui você salva no Neon
-  await pool.query(
-    'INSERT INTO products (name, price, images) VALUES ($1, $2, $3)',
-    [nome, preco, JSON.stringify([nomeArquivo])] // Salvamos como um array JSON
-  );
+    // Aqui você salva no Neon
+    await pool.query(
+      'INSERT INTO products (name, price, images) VALUES ($1, $2, $3)',
+      [nome, preco, JSON.stringify([nomeArquivo])] // Salvamos como um array JSON
+    );
 
-  res.status(200).send("Produto cadastrado com sucesso!");
-});
-}
+    res.status(200).send("Produto cadastrado com sucesso!");
+  });
+  }
+
+  app.get('/api/ativar-tudo', async (req, res) => {
+    try {
+      await pool.query('UPDATE products SET active = 1');
+      res.send('Sucesso! Todos os produtos foram ativados.');
+    } catch (e) {
+      res.status(500).send('Erro: ' + e.message);
+    }
+  });
 
 startServer();
