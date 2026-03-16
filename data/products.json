@@ -1,109 +1,114 @@
 [
   {
     "id": 1,
-    "name": "Cimento CP II-E-32 50kg",
+    "name": "Argamassa AC-II 15kg",
     "category": "Material de Construção",
     "price": 35.90,
     "oldPrice": 39.90,
     "oferta": true,
-    "description": "Cimento Portland de alta qualidade, ideal para obras de pequeno a grande porte. Excelente trabalhabilidade e resistência.",
-    "stock": 500,
+    "description": "Argamassa AC-II 15kg Colamix Cinza Rejuntamix",
+    "stock": 80,
     "images": [
-      "https://picsum.photos/seed/cimento1/600/600",
-      "https://picsum.photos/seed/cimento2/600/600"
+      "https://lojaacal.vtexassets.com/arquivos/ids/227019-1600-auto?v=639015732913100000&width=1600&height=auto&aspect=true",
+      "https://lojaacal.vtexassets.com/arquivos/ids/227020-1600-auto?v=639053805723870000&width=1600&height=auto&aspect=true"
     ],
     "featured": true
   },
   {
     "id": 2,
-    "name": "Furadeira de Impacto 600W",
-    "category": "Ferragens",
-    "price": 249.00,
-    "oldPrice": 299.00,
+    "name": "Conjunto Acoplado com Acionamento Duplo 3|6 Litros e Kit de Instalação Like Branco - Celite",
+    "category": "Hidráulico",
+    "price": 729.00,
+    "oldPrice": 750.00,
     "oferta": true,
-    "description": "Furadeira potente com função impacto, perfeita para perfurações em concreto, madeira e metal. Acompanha maleta.",
-    "stock": 45,
+    "description": "O Kit Bacia Celite com Caixa Acoplada Completo Like Branco contém todos os complementos necessários para instalação da bacia com caixa acoplada. Qualidade da marca Celite.",
+    "stock": 2,
     "images": [
-      "https://picsum.photos/seed/furadeira1/600/600",
-      "https://picsum.photos/seed/furadeira2/600/600"
+      "https://carajas.vtexassets.com/arquivos/ids/26599613-1200-1200?v=638719068509030000&width=1200&height=1200&aspect=true",
+      "https://carajas.vtexassets.com/arquivos/ids/26599617-1200-1200?v=638719068513070000&width=1200&height=1200&aspect=true",
+      "https://carajas.vtexassets.com/arquivos/ids/26599638-1200-1200?v=638719068521770000&width=1200&height=1200&aspect=true"
     ],
     "featured": true
   },
   {
     "id": 3,
-    "name": "Fio Flexível 2,5mm 100m Azul",
-    "category": "Elétrico",
-    "price": 189.90,
+    "name": "Pia de Cozinha em Inox 80cm a 160cm Plus Ghelplus",
+    "category": "Hidráulico",
+    "price": 270.00,
     "oferta": false,
     "description": "Cabo flexível de cobre de alta condutividade. Ideal para instalações elétricas residenciais e comerciais.",
-    "stock": 120,
+    "stock": 4,
     "images": [
-      "https://picsum.photos/seed/eletrica1/600/600"
+      "https://cdn.leroymerlin.com.br/products/pia_de_cozinha_em_inox_120cm_plus_ghelplus_92023750_aba2_600x600.png",
+      "https://cdn.leroymerlin.com.br/products/pia_de_cozinha_em_inox_120cm_plus_ghelplus_92023750_9d7b_600x600.png"
     ],
     "featured": false
   },
   {
     "id": 4,
-    "name": "Tubo PVC Esgoto 100mm 6m",
-    "category": "Hidráulico",
-    "price": 85.00,
-    "oldPrice": 95.00,
+    "name": "Carrinho de Mão Tramontina com Caçamba Funda Plástica Laranja 55 L, Braço de Madeira e Pneu com Câmara",
+    "category": "Material de Construção",
+    "price": 350.00,
+    "oldPrice": 320.00,
     "oferta": true,
     "description": "Tubo de PVC resistente para sistemas de esgoto sanitário. Fácil instalação e alta durabilidade.",
-    "stock": 80,
+    "stock": 1,
     "images": [
-      "https://picsum.photos/seed/tubo1/600/600"
+      "https://assets.tramontina.com.br/upload/tramon/imagens/MUL/77717421PDM001G.jpg",
+      "https://assets.tramontina.com.br/upload/tramon/imagens/MUL/77717421PRM002G.jpg",
+      "https://assets.tramontina.com.br/upload/tramon/imagens/MUL/77717421PRM008G.jpg"
     ],
     "featured": true
   },
   {
     "id": 5,
-    "name": "Tinta Acrílica Fosca Branca 18L",
+    "name": "Tinta Fosca Fortmais Econômica Interior Branco Neve 15L Fortex",
     "category": "Tintas",
-    "price": 320.00,
-    "oldPrice": 350.00,
+    "price": 135.00,
+    "oldPrice": 150.00,
     "oferta": true,
-    "description": "Tinta acrílica de alto rendimento e cobertura. Lavável e com acabamento fosco aveludado.",
-    "stock": 60,
+    "description": "Excelente rendimento de até 60 m² por embalagem, otimizando seu projeto e garantindo cobertura para grandes áreas com apenas uma lata.",
+    "stock": 10,
     "images": [
-      "https://picsum.photos/seed/tinta1/600/600",
-      "https://picsum.photos/seed/tinta2/600/600"
-    ],
+      "https://cdn.leroymerlin.com.br/products/tinta_fosca_fortmais_economica_interior_branco_neve_15l_fortex_92327725_8ae9_600x600.jpg"
+     ],
     "featured": true
   },
   {
     "id": 6,
-    "name": "Martelo de Unha Polido 27mm",
+    "name": "Arame Farpado Nelore Rolo 250mts e 500mts Morlan",
     "category": "Ferragens",
     "price": 42.50,
-    "description": "Martelo de aço forjado com cabo emborrachado ergonômico. Residênte e durável.",
+    "description": "Invista na segurança imbatível do Nelore Morlan. Fabricado com aço de alta resistência, ele oferece durabilidade excepcional, resistindo às mais duras condições climáticas e ao tempo.",
     "stock": 150,
     "images": [
-      "https://picsum.photos/seed/martelo1/600/600"
+      "https://normatel.fbitsstatic.net/img/p/arame-farpado-nelore-rolo-500-metros-morlan-87283/274341.jpg?w=770&h=770&v=no-value"
     ],
     "featured": false
   },
   {
     "id": 7,
-    "name": "Lâmpada LED 9W Bivolt",
+    "name": "Furadeira Parafusadeira De Impacto 500w Bosch",
     "category": "Elétrico",
-    "price": 9.90,
-    "description": "Lâmpada LED econômica com vida útil de 25.000 horas. Luz branca fria.",
-    "stock": 1000,
+    "price": 800.00,
+    "description": "A Furadeira de Impacto Bosch GSB 13 RE possui 650W de potência, é super leve e compacta! Vem com empunhadeira emborrachada para o agarre seguro e confortável.",
+    "stock": 1,
     "images": [
-      "https://picsum.photos/seed/lampada1/600/600"
+      "https://normatel.fbitsstatic.net/img/p/furadeira-de-impacto-gsb-13-re-750w-220v-e-maleta-bosch-85237/272281.jpg?w=770&h=770&v=no-value",
+      "https://http2.mlstatic.com/D_NQ_NP_2X_953983-MLB50170198313_062022-F-furadeira-parafusadeira-de-impacto-650w-bosch-gsb13re-12.webp"
     ],
     "featured": false
   },
   {
     "id": 8,
-    "name": "Torneira Para Cozinha Gourmet",
+    "name": "Torneira p/ Maquina e Tanque Cross Tigre 1/2 - 3/4 - Acabamento Plástico - Cor Branco",
     "category": "Hidráulico",
-    "price": 215.00,
-    "description": "Torneira flexível com acabamento cromado. Design moderno e funcional para sua cozinha.",
+    "price": 30.00,
+    "description": "O controle monocomando é um sistema moderno, durável e fácil de instalar. Permitirá que você opere a abertura e o fechamento do fluxo com apenas uma mão.",
     "stock": 30,
     "images": [
-      "https://picsum.photos/seed/torneira1/600/600"
+      "https://http2.mlstatic.com/D_NQ_NP_2X_967736-MLA100117854521_122025-F.webp",
+      "https://http2.mlstatic.com/D_NQ_NP_2X_638308-MLA81497484418_012025-F.webp"
     ],
     "featured": true
   }

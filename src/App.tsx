@@ -3,47 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useParams, u
 import { ShoppingCart, Search, Menu, X, Phone, Mail, MapPin, Facebook, Instagram, Twitter, ChevronRight, Trash2, Plus, Minus, Clock, LayoutDashboard, Package, Tag, Users, LogOut, LogIn, PlusCircle, Edit, CheckCircle, XCircle, Filter, ChevronDown, ChevronLeft, List } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Product, CartItem, User, Category } from './types';
-import ProductCard from './components/ProductCard';
-import ProductDetailPage from './ProductDetailPage';
-
-// --- Helpers ---
-const getImageUrl = (images: any): string => {
-  try {
-    let imgArray: string[] = [];
-    
-    if (Array.isArray(images)) {
-      imgArray = images;
-    } else if (typeof images === 'string' && images.trim() !== '') {
-      if (images.startsWith('[') && images.endsWith(']')) {
-        try {
-          imgArray = JSON.parse(images);
-        } catch {
-          imgArray = [images];
-        }
-      } else {
-        imgArray = [images];
-      }
-    }
-
-    const firstImage = imgArray[0];
-    if (!firstImage || firstImage === '') return '/img/logo_padrao.png';
-    
-    if (firstImage.startsWith('http') || firstImage.startsWith('data:')) {
-      return firstImage;
-    }
-
-    const filename = firstImage.replace(/^\/static\//, '').replace(/^\/img\/produtos\//, '').replace(/^\//, '');
-    return `/img/produtos/${filename}`;
-  } catch (e) {
-    return '/img/logo_padrao.png';
-  }
-};
-
-const formatPrice = (price: any) => {
-  const num = Number(price);
-  if (isNaN(num) || num === 0) return '0,00';
-  return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-};
 
 // --- Contexts ---
 
@@ -212,9 +171,6 @@ const Header = () => {
               src="/img/logo.png" 
               alt="FORTIMAX" 
               className="h-10 md:h-14 w-auto"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = "/img/placeholder-produto.jpg";
-              }}
             />
           </Link>
 
@@ -400,9 +356,6 @@ const Footer = () => {
                 src="/img/logo.png" 
                 alt="FORTIMAX" 
                 className="logo brightness-0 invert"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = "/img/placeholder-produto.jpg";
-                }}
               />
             </Link>
             <p className="text-brand-light/80 text-sm leading-relaxed">
@@ -538,7 +491,7 @@ const HomePage = () => {
       {/* Hero Banner */}
       <section className="relative h-[400px] md:h-[500px] overflow-hidden">
         <img
-          src="https://picsum.photos/seed/fortimax-banner/1920/1080"
+          src="/img/fortimax.png"
           alt="Banner FORTIMAX"
           className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
@@ -614,7 +567,7 @@ const HomePage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
           <div className="rounded-3xl overflow-hidden shadow-2xl relative group">
             <img
-              src="https://picsum.photos/seed/fortimax-store/800/600"
+              src="/img/fortimax.png"
               alt="Sobre a Fortimax"
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               referrerPolicy="no-referrer"
@@ -647,6 +600,76 @@ const HomePage = () => {
   );
 };
 
+const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
+  const { addToCart } = useCart();
+
+  // Lógica para tratar o campo images que vem como string JSON do SQLite
+  const getImageUrl = (imagesData: any) => {
+    try {
+      if (typeof imagesData === 'string') {
+        const parsed = JSON.parse(imagesData); // Converte '["..."]' em um array real
+        return parsed[0];
+      }
+      return imagesData[0]; // Se já for um array, retorna o primeiro
+    } catch (e) {
+      return "/img/logo.png"; // Fallback se o JSON estiver corrompido
+    }
+  };
+
+  return (
+    <motion.div
+      whileHover={{ y: -5 }}
+      className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden group flex flex-col h-full hover:shadow-xl transition-all"
+    >
+      <Link to={`/produto/${product.id}`} className="relative h-48 md:h-64 overflow-hidden block">
+        <img
+          src={getImageUrl(product.images)}
+          alt={product.name}
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          referrerPolicy="no-referrer"
+        />
+        {product.oferta && (
+          <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-red-600 text-white text-[8px] md:text-[10px] font-black px-2 py-1 md:px-3 md:py-1.5 rounded-full shadow-xl animate-pulse uppercase tracking-widest border border-white/20">
+            PROMOÇÃO
+          </div>
+        )}
+      </Link>
+      <div className="p-4 md:p-6 flex flex-col flex-grow">
+        <Link to={`/produto/${product.id}`} className="font-bold text-brand-dark hover:text-brand-primary transition-colors line-clamp-2 mb-3 md:mb-4 uppercase text-xs md:text-sm tracking-tight leading-tight">
+          {product.name}
+        </Link>
+        <div className="mt-auto">
+          <div className="flex flex-col mb-3 md:mb-4">
+            {product.oldPrice && (
+              <span className="text-[10px] md:text-sm text-gray-400 line-through font-medium">
+                De: R$ {product.oldPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </span>
+            )}
+            <div className="price-fluid font-black text-brand-dark">
+              <p>R$ {product.price ? Number(product.price).toFixed(2) : "0.00"}</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5 md:gap-2">
+            <Link
+              to={`/produto/${product.id}`}
+              className="text-center py-1.5 md:py-2.5 border border-brand-dark text-brand-dark rounded-lg text-[10px] md:text-xs font-bold hover:bg-brand-bg transition-colors uppercase tracking-wider truncate px-1"
+            >
+              Detalhes
+            </Link>
+            <button
+              onClick={() => addToCart(product)}
+              className="bg-brand-primary text-white py-1.5 md:py-2.5 rounded-lg text-[10px] md:text-xs font-bold hover:bg-brand-dark transition-colors flex items-center justify-center space-x-1 md:space-x-2 uppercase tracking-wider truncate px-1"
+            >
+              <ShoppingCart size={14} className="md:w-4 md:h-4" />
+              <span>Comprar</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
 const ProductsPage = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [dbCategories, setDbCategories] = useState<Category[]>([]);
@@ -667,20 +690,24 @@ const ProductsPage = () => {
   useEffect(() => {
     const params = new URLSearchParams();
     if (activeCategory !== 'Todos') {
-      params.append('categoria', activeCategory);
+      const cat = dbCategories.find(c => c.name === activeCategory);
+      if (cat) params.append('categoryId', cat.id.toString());
     }
     if (searchTerm) params.append('search', searchTerm);
     params.append('page', currentPage.toString());
     params.append('limit', '40');
 
-    fetch(`/api/produtos?${params.toString()}`)
+      fetch(`/api/products?${params.toString()}`)
       .then(res => res.json())
       .then(data => {
-        setProducts(data.produtos);
-        setTotalPages(data.pagination.totalPages);
+        // CORREÇÃO: Altere de data.produtos para data.products
+        console.log("Dados recebidos da API:", data); // Isso vai confirmar o formato no F12
+        
+        setProducts(data.products || []); // O '|| []' previne que o app quebre se vier vazio
+        setTotalPages(data.pagination?.totalPages || 1);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       });
-  }, [activeCategory, searchTerm, currentPage]);
+  }, [activeCategory, searchTerm, currentPage, dbCategories]);
 
   useEffect(() => {
     fetch('/api/categorias')
@@ -688,23 +715,17 @@ const ProductsPage = () => {
       .then(data => setDbCategories(data));
   }, []);
 
-  const handleCategoryChange = (catSlug: string) => {
-    setActiveCategory(catSlug);
+  const handleCategoryChange = (cat: string) => {
+    setActiveCategory(cat);
     setCurrentPage(1);
     setIsFilterOpen(false);
-    setSearchParams({ cat: catSlug, search: searchTerm, page: '1' });
+    setSearchParams({ cat, search: searchTerm, page: '1' });
   };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setSearchParams({ cat: activeCategory, search: searchTerm, page: page.toString() });
-  };
-
-  const getActiveCategoryName = () => {
-    if (activeCategory === 'Todos') return 'Todas Categorias';
-    const cat = dbCategories.find(c => c.slug === activeCategory);
-    return cat ? cat.name : activeCategory;
   };
 
   return (
@@ -723,7 +744,7 @@ const ProductsPage = () => {
           >
             <div className="flex items-center">
               <Filter size={18} className="mr-3 text-brand-primary" />
-              <span>{getActiveCategoryName()}</span>
+              <span>{activeCategory === 'Todos' ? 'Todas Categorias' : activeCategory}</span>
             </div>
             <ChevronDown size={18} className={`transition-transform ${isFilterOpen ? 'rotate-180' : ''}`} />
           </button>
@@ -739,8 +760,8 @@ const ProductsPage = () => {
               {dbCategories.map(cat => (
                 <button
                   key={cat.id}
-                  onClick={() => handleCategoryChange(cat.slug)}
-                  className={`w-full text-left px-6 py-3 text-sm font-bold uppercase tracking-wider hover:bg-brand-bg transition-colors ${activeCategory === cat.slug ? 'text-brand-primary bg-brand-bg' : 'text-gray-600'}`}
+                  onClick={() => handleCategoryChange(cat.name)}
+                  className={`w-full text-left px-6 py-3 text-sm font-bold uppercase tracking-wider hover:bg-brand-bg transition-colors ${activeCategory === cat.name ? 'text-brand-primary bg-brand-bg' : 'text-gray-600'}`}
                 >
                   {cat.name}
                 </button>
@@ -830,21 +851,33 @@ const OffersPage = () => {
   useEffect(() => {
     const params = new URLSearchParams();
     if (activeCategory !== 'Todos') {
-      params.append('categoria', activeCategory);
+      const cat = dbCategories.find(c => c.name === activeCategory);
+      if (cat) params.append('categoryId', cat.id.toString());
     }
     if (searchTerm) params.append('search', searchTerm);
     params.append('page', currentPage.toString());
     params.append('limit', '40');
     params.append('onlyOffers', 'true');
 
-    fetch(`/api/produtos?${params.toString()}`)
+    fetch(`/api/products?${params.toString()}`)
       .then(res => res.json())
       .then(data => {
-        setProducts(data.produtos);
-        setTotalPages(data.pagination.totalPages);
+        // CORREÇÃO: Mude de data.produtos para data.products
+        console.log("DEBUG API OFERTAS:", data); // Isso ajudará a ver o que chega
+        
+        // Se 'data.products' não existir, usamos um array vazio para não quebrar o .map()
+        setProducts(data.products || []); 
+        
+        // Verifique se o pagination existe para evitar erro
+        setTotalPages(data.pagination?.totalPages || 1);
+        
         window.scrollTo({ top: 0, behavior: 'smooth' });
+      })
+      .catch(err => {
+        console.error("Erro ao buscar ofertas:", err);
+        setProducts([]); // Garante que a tela não quebre se a API falhar
       });
-  }, [activeCategory, searchTerm, currentPage]);
+  }, [activeCategory, searchTerm, currentPage, dbCategories]);
 
   useEffect(() => {
     fetch('/api/categorias')
@@ -852,23 +885,17 @@ const OffersPage = () => {
       .then(data => setDbCategories(data));
   }, []);
 
-  const handleCategoryChange = (catSlug: string) => {
-    setActiveCategory(catSlug);
+  const handleCategoryChange = (cat: string) => {
+    setActiveCategory(cat);
     setCurrentPage(1);
     setIsFilterOpen(false);
-    setSearchParams({ cat: catSlug, search: searchTerm, page: '1' });
+    setSearchParams({ cat, search: searchTerm, page: '1' });
   };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setSearchParams({ cat: activeCategory, search: searchTerm, page: page.toString() });
-  };
-
-  const getActiveCategoryName = () => {
-    if (activeCategory === 'Todos') return 'Todas Categorias';
-    const cat = dbCategories.find(c => c.slug === activeCategory);
-    return cat ? cat.name : activeCategory;
   };
 
   return (
@@ -888,7 +915,7 @@ const OffersPage = () => {
           >
             <div className="flex items-center">
               <Filter size={18} className="mr-3 text-brand-primary" />
-              <span>{getActiveCategoryName()}</span>
+              <span>{activeCategory === 'Todos' ? 'Todas Categorias' : activeCategory}</span>
             </div>
             <ChevronDown size={18} className={`transition-transform ${isFilterOpen ? 'rotate-180' : ''}`} />
           </button>
@@ -904,8 +931,8 @@ const OffersPage = () => {
               {dbCategories.map(cat => (
                 <button
                   key={cat.id}
-                  onClick={() => handleCategoryChange(cat.slug)}
-                  className={`w-full text-left px-6 py-3 text-sm font-bold uppercase tracking-wider hover:bg-brand-bg transition-colors ${activeCategory === cat.slug ? 'text-brand-primary bg-brand-bg' : 'text-gray-600'}`}
+                  onClick={() => handleCategoryChange(cat.name)}
+                  className={`w-full text-left px-6 py-3 text-sm font-bold uppercase tracking-wider hover:bg-brand-bg transition-colors ${activeCategory === cat.name ? 'text-brand-primary bg-brand-bg' : 'text-gray-600'}`}
                 >
                   {cat.name}
                 </button>
@@ -975,17 +1002,124 @@ const OffersPage = () => {
   );
 };
 
+const ProductDetailPage = () => {
+  const { id } = useParams();
+  const [product, setProduct] = useState<Product | null>(null);
+  const [activeImage, setActiveImage] = useState(0);
+  const { addToCart } = useCart();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    fetch(`/api/products/${id}`)
+      .then(res => {
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+      .then(data => {
+        // Adapt backend fields to frontend interface if necessary
+        const adaptedProduct = {
+          ...data,
+          price: parseFloat(data.preco_oferta || data.preco_base),
+          oldPrice: data.preco_oferta ? parseFloat(data.preco_base) : null,
+          images: data.imagem_url 
+          ? [data.imagem_url.startsWith('/') ? data.imagem_url : `/${data.imagem_url}`] 
+          : ['/img/logo.png'],
+          category: data.categoria_nome,
+          oferta: data.em_oferta,
+          stock: data.estoque,
+          name: data.nome,
+          description: data.descricao
+        };
+        setProduct(adaptedProduct);
+      })
+      .catch(() => navigate('/produtos'));
+  }, [id, navigate]);
+
+  if (!product) return <div className="h-screen flex items-center justify-center font-bold text-brand-dark">Carregando...</div>;
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-16">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16">
+        {/* Images */}
+        <div className="space-y-4">
+          <div className="aspect-square rounded-2xl md:rounded-3xl overflow-hidden border border-gray-100 shadow-sm bg-white">
+            <img
+              src={product.images[activeImage]}
+              alt={product.name}
+              className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+          <div className="flex space-x-2 md:space-x-4 overflow-x-auto pb-2 scrollbar-hide">
+            {product.images.map((img, idx) => (
+              <button
+                key={idx}
+                onClick={() => setActiveImage(idx)}
+                className={`flex-shrink-0 w-16 h-16 md:w-24 md:h-24 rounded-lg md:rounded-xl overflow-hidden border-2 transition-all ${
+                  activeImage === idx ? 'border-brand-primary shadow-lg' : 'border-transparent opacity-60 hover:opacity-100'
+                }`}
+              >
+                <img src={img} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Info */}
+        <div className="space-y-6 md:space-y-8">
+          <div>
+            <div className="text-brand-primary font-bold text-xs md:text-sm uppercase tracking-widest mb-1 md:mb-2">{product.category}</div>
+            <h1 className="text-xl md:text-3xl lg:text-4xl font-black text-brand-dark leading-tight uppercase tracking-tight">{product.name}</h1>
+          </div>
+
+          <div className="flex flex-col">
+            {product.oldPrice && (
+              <span className="text-sm md:text-lg text-gray-400 line-through font-medium">
+                De: R$ {product.oldPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </span>
+            )}
+            <div className="text-3xl md:text-5xl font-black text-brand-dark tracking-tighter">
+              <p>R$ {product.price ? Number(product.price).toFixed(2) : "0.00"}</p>
+            </div>
+          </div>
+
+          <p className="text-gray-600 text-sm md:text-lg leading-relaxed">
+            {product.description}
+          </p>
+
+          <div className="bg-brand-bg p-4 md:p-6 rounded-2xl border border-brand-primary/10 space-y-3 md:space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <span className="text-brand-dark font-bold uppercase text-[10px] md:text-xs tracking-wider">Disponibilidade:</span>
+              <span className="text-brand-primary font-bold flex items-center text-xs md:text-sm uppercase whitespace-nowrap">
+                <span className="w-2 h-2 md:w-2.5 md:h-2.5 bg-brand-primary rounded-full mr-2 animate-pulse"></span>
+                Em estoque ({product.stock} unidades)
+              </span>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <span className="text-brand-dark font-bold uppercase text-[10px] md:text-xs tracking-wider">Entrega:</span>
+              <span className="text-gray-600 text-xs md:text-sm font-medium uppercase">Fortim e Região</span>
+            </div>
+          </div>
+
+          <div className="flex pt-4">
+            <button
+              onClick={() => addToCart(product)}
+              className="w-full bg-brand-primary hover:bg-brand-dark text-white py-4 md:py-5 rounded-xl font-bold text-sm md:text-lg transition-all shadow-xl shadow-brand-primary/20 flex items-center justify-center space-x-3 uppercase tracking-widest"
+            >
+              <ShoppingCart size={20} className="md:w-6 md:h-6" />
+              <span>Adicionar ao Carrinho</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const CartPage = () => {
   const { cart, removeFromCart, updateQuantity, totalPrice, clearCart } = useCart();
-  const [customerName, setCustomerName] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('Dinheiro');
 
   const handleCheckout = async () => {
-    if (cart.length === 0) {
-      alert('Seu carrinho está vazio!');
-      return;
-    }
-
     try {
       // Deduct stock in backend
       const res = await fetch('/api/finalizar-pedido', {
@@ -1001,20 +1135,19 @@ const CartPage = () => {
       }
 
       const phoneNumber = '5588988253050';
-      
-      // Build professional message
-      let message = `Olá, sou o cliente ${customerName || '[Nome]'}. Meu pedido:\n\n`;
+      let message = '*NOVO PEDIDO - FORTIMAX*\n\n';
+      message += 'Olá, gostaria de fazer um pedido.\n\n';
+      message += '*PRODUTOS SELECIONADOS:*\n';
       
       cart.forEach(item => {
-        const itemPrice = Number(item.price);
-        message += `*${item.quantity}x ${item.name} - R$ ${itemPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n`;
+        message += `✅ ${item.quantity}x ${item.name} - R$ ${(item.price * item.quantity).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
       });
 
-      message += `\nTotal Geral: R$ ${Number(totalPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-      message += `\n\n💳 Forma de Pagamento: ${paymentMethod}`;
+      message += `\n*TOTAL ESTIMADO: R$ ${totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n\n`;
+      message += '_Poderia confirmar a disponibilidade e o frete para minha região?_';
 
       const encodedMessage = encodeURIComponent(message);
-      const whatsappUrl = `https://wa.me/5588988253050?text=${encodedMessage}`;
+      const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
       
       window.open(whatsappUrl, '_blank');
       clearCart();
@@ -1046,12 +1179,12 @@ const CartPage = () => {
         <div className="lg:col-span-2 space-y-4 md:space-y-6">
           {cart.map(item => (
             <div key={item.id} className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-6 shadow-sm hover:shadow-md transition-all box-border">
-              <img src={getImageUrl(item.images)} alt={item.name} className="w-20 h-20 md:w-24 md:h-24 object-cover rounded-xl bg-brand-bg flex-shrink-0" referrerPolicy="no-referrer" />
+              <img src={item.images[0]} alt={item.name} className="w-20 h-20 md:w-24 md:h-24 object-cover rounded-xl bg-brand-bg flex-shrink-0" referrerPolicy="no-referrer" />
               <div className="flex-grow text-center sm:text-left">
                 <h3 className="font-bold text-brand-dark text-sm md:text-lg uppercase tracking-tight line-clamp-2">{item.name}</h3>
                 <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mt-1">{item.category}</p>
                 <div className="mt-2 text-brand-primary font-black text-sm md:text-base">
-                  R$ {formatPrice(item.price)}
+                  R$ {item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </div>
               </div>
               <div className="flex items-center space-x-4 w-full sm:w-auto justify-between sm:justify-end">
@@ -1075,41 +1208,14 @@ const CartPage = () => {
 
         <div className="bg-white p-6 md:p-8 rounded-3xl border border-brand-primary/10 shadow-xl h-fit space-y-6 box-border">
           <h3 className="text-lg md:text-xl font-black text-brand-dark border-b pb-4 uppercase tracking-wider text-center md:text-left">Resumo do Pedido</h3>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Seu Nome (Opcional)</label>
-              <input 
-                type="text" 
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="Ex: João Silva"
-                className="w-full px-4 py-3 bg-brand-bg border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Forma de Pagamento</label>
-              <select 
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                className="w-full px-4 py-3 bg-brand-bg border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20 font-medium"
-              >
-                <option value="Dinheiro">Dinheiro</option>
-                <option value="Pix">Pix</option>
-                <option value="Cartão de Crédito">Cartão de Crédito</option>
-                <option value="Cartão de Débito">Cartão de Débito</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="space-y-3 md:space-y-4 pt-4 border-t border-gray-100">
+          <div className="space-y-3 md:space-y-4">
             <div className="flex justify-between text-gray-600 font-medium text-sm md:text-base">
               <span>Subtotal</span>
-              <span>R$ {Number(totalPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+              <span>R$ {totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
             <div className="border-t border-brand-primary/10 pt-4 flex justify-between text-xl md:text-2xl font-black text-brand-dark">
               <span>Total</span>
-              <span>R$ {Number(totalPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+              <span>R$ {totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
           </div>
           
@@ -1121,8 +1227,7 @@ const CartPage = () => {
 
           <button 
             onClick={handleCheckout}
-            disabled={cart.length === 0}
-            className="w-full bg-brand-primary hover:bg-brand-dark text-white py-4 md:py-5 rounded-xl font-bold text-sm md:text-lg transition-all shadow-xl shadow-brand-primary/20 flex items-center justify-center space-x-3 uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-brand-primary hover:bg-brand-dark text-white py-4 md:py-5 rounded-xl font-bold text-sm md:text-lg transition-all shadow-xl shadow-brand-primary/20 flex items-center justify-center space-x-3 uppercase tracking-widest"
           >
             <Phone size={18} className="flex-shrink-0" />
             <span className="whitespace-nowrap">Finalizar no WhatsApp</span>
@@ -1314,7 +1419,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
       <aside className="w-full md:w-64 bg-brand-dark text-white flex flex-col">
         <div className="p-6 border-b border-brand-primary/20">
           <Link to="/" className="flex items-center">
-            <img src="/img/logo.png" alt="FORTIMAX" className="h-10 brightness-0 invert" onError={e => (e.target as any).src = "/img/placeholder-produto.jpg"} />
+            <img src="/img/logo.png" alt="FORTIMAX" className="h-10 brightness-0 invert" />
           </Link>
           <div className="mt-4">
             <p className="text-xs font-bold text-brand-light uppercase tracking-widest">Olá, {user?.nome}</p>
@@ -1559,11 +1664,11 @@ const AdminProducts = () => {
               {products.map(p => (
                 <tr key={p.id} className="hover:bg-brand-bg/20 transition-colors">
                   <td className="px-6 py-4 flex items-center space-x-4">
-                    <img src={getImageUrl(p.images)} className="w-10 h-10 rounded-lg object-cover bg-brand-bg" onError={e => (e.target as any).src = "/img/logo_padrao.png"} />
+                    <img src={p.images[0]} className="w-10 h-10 rounded-lg object-cover bg-brand-bg" onError={e => (e.target as any).src = "https://via.placeholder.com/100"} />
                     <span className="font-bold text-brand-dark">{p.name}</span>
                   </td>
                   <td className="px-6 py-4 text-gray-500 font-medium">{p.category}</td>
-                  <td className="px-6 py-4 font-bold text-brand-primary">R$ {formatPrice(p.price)}</td>
+                  <td className="px-6 py-4 font-bold text-brand-primary">R$ {p.price.toFixed(2)}</td>
                   <td className="px-6 py-4 text-gray-500 font-medium">{p.stock} un</td>
                   <td className="px-6 py-4">
                     <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${p.active ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
@@ -1572,9 +1677,7 @@ const AdminProducts = () => {
                   </td>
                   <td className="px-6 py-4 text-right space-x-2">
                     <button onClick={() => handleEdit(p)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"><Edit size={18} /></button>
-                    {(user?.nivel === 'admin' || user?.nivel === 'gerente') && (
-                      <button onClick={() => handleDelete(p.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={18} /></button>
-                    )}
+                    <button onClick={() => handleDelete(p.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={18} /></button>
                   </td>
                 </tr>
               ))}
@@ -1588,7 +1691,7 @@ const AdminProducts = () => {
             <div key={p.id} className="p-4 flex flex-col space-y-3">
               <div className="flex items-start justify-between">
                 <div className="flex items-center space-x-3">
-                  <img src={getImageUrl(p.images)} className="w-12 h-12 rounded-xl object-cover bg-brand-bg" onError={e => (e.target as any).src = "/img/logo_padrao.png"} />
+                  <img src={p.images[0]} className="w-12 h-12 rounded-xl object-cover bg-brand-bg" onError={e => (e.target as any).src = "https://via.placeholder.com/100"} />
                   <div>
                     <h3 className="font-bold text-brand-dark leading-tight">{p.name}</h3>
                     <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1">{p.category}</p>
@@ -1602,14 +1705,12 @@ const AdminProducts = () => {
               <div className="flex items-center justify-between pt-2">
                 <div>
                   <p className="text-[10px] text-gray-400 font-bold uppercase">Preço</p>
-                  <p className="font-black text-brand-primary text-lg">R$ {formatPrice(p.price)}</p>
+                  <p className="font-black text-brand-primary text-lg">R$ {p.price.toFixed(2)}</p>
                   <p className="text-[10px] text-gray-500 font-medium">Estoque: {p.stock} un</p>
                 </div>
                 <div className="flex space-x-2">
                   <button onClick={() => handleEdit(p)} className="p-3 bg-blue-50 text-blue-600 rounded-xl transition-colors"><Edit size={20} /></button>
-                  {(user?.nivel === 'admin' || user?.nivel === 'gerente') && (
-                    <button onClick={() => handleDelete(p.id)} className="p-3 bg-red-50 text-red-600 rounded-xl transition-colors"><Trash2 size={20} /></button>
-                  )}
+                  <button onClick={() => handleDelete(p.id)} className="p-3 bg-red-50 text-red-600 rounded-xl transition-colors"><Trash2 size={20} /></button>
                 </div>
               </div>
             </div>
@@ -1746,15 +1847,13 @@ const AdminCategories = () => {
     <div className="space-y-10">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-black text-brand-dark uppercase">Categorias</h1>
-        {(user?.nivel === 'admin' || user?.nivel === 'gerente') && (
-          <button 
-            onClick={() => { setEditingCategory(null); setFormData({ name: '', active: true }); setIsModalOpen(true); }}
-            className="bg-brand-primary text-white px-6 py-3 rounded-xl font-bold flex items-center space-x-2 hover:bg-brand-dark transition-all uppercase tracking-widest text-sm"
-          >
-            <PlusCircle size={20} />
-            <span>Nova Categoria</span>
-          </button>
-        )}
+        <button 
+          onClick={() => { setEditingCategory(null); setFormData({ name: '', active: true }); setIsModalOpen(true); }}
+          className="bg-brand-primary text-white px-6 py-3 rounded-xl font-bold flex items-center space-x-2 hover:bg-brand-dark transition-all uppercase tracking-widest text-sm"
+        >
+          <PlusCircle size={20} />
+          <span>Nova Categoria</span>
+        </button>
       </div>
 
       <div className="bg-white rounded-3xl shadow-sm border border-brand-primary/5 overflow-hidden">
@@ -1776,14 +1875,8 @@ const AdminCategories = () => {
                   </span>
                 </td>
                 <td className="px-6 py-4 text-right space-x-2">
-                  {(user?.nivel === 'admin' || user?.nivel === 'gerente') ? (
-                    <>
-                      <button onClick={() => handleEdit(cat)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"><Edit size={18} /></button>
-                      <button onClick={() => handleDelete(cat.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={18} /></button>
-                    </>
-                  ) : (
-                    <span className="text-gray-400 text-[10px] font-bold uppercase">Apenas Leitura</span>
-                  )}
+                  <button onClick={() => handleEdit(cat)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"><Edit size={18} /></button>
+                  <button onClick={() => handleDelete(cat.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={18} /></button>
                 </td>
               </tr>
             ))}
