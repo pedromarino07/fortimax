@@ -19,7 +19,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       if (Array.isArray(images)) {
         imgArray = images;
       } else if (typeof images === 'string' && images.trim() !== '') {
-        // Try to parse if it looks like a JSON array
         if (images.startsWith('[') && images.endsWith(']')) {
           try {
             imgArray = JSON.parse(images);
@@ -34,11 +33,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       const firstImage = imgArray[0];
       if (!firstImage || firstImage === '') return '/img/logo_padrao.png';
       
-      // Remove any /static/ prefix if present (as requested)
-      const cleanPath = firstImage.replace(/^\/static\//, '/');
+      if (firstImage.startsWith('http') || firstImage.startsWith('data:')) {
+        return firstImage;
+      }
+
+      // Remove /static/ or /img/produtos/ prefixes to normalize
+      const filename = firstImage.replace(/^\/static\//, '').replace(/^\/img\/produtos\//, '').replace(/^\//, '');
       
-      // Ensure it starts with /
-      return cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
+      return `/img/produtos/${filename}`;
     } catch (e) {
       return '/img/logo_padrao.png';
     }

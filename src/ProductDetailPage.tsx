@@ -35,8 +35,10 @@ const ProductDetailPage: React.FC = () => {
       
       return imgArray.map(img => {
         if (!img || img === '') return '/img/logo_padrao.png';
-        const cleanPath = img.replace(/^\/static\//, '/');
-        return cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
+        if (img.startsWith('http') || img.startsWith('data:')) return img;
+        
+        const filename = img.replace(/^\/static\//, '').replace(/^\/img\/produtos\//, '').replace(/^\//, '');
+        return `/img/produtos/${filename}`;
       });
     } catch (e) {
       return ['/img/logo_padrao.png'];

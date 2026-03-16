@@ -28,8 +28,12 @@ const getImageUrl = (images: any): string => {
     const firstImage = imgArray[0];
     if (!firstImage || firstImage === '') return '/img/logo_padrao.png';
     
-    const cleanPath = firstImage.replace(/^\/static\//, '/');
-    return cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
+    if (firstImage.startsWith('http') || firstImage.startsWith('data:')) {
+      return firstImage;
+    }
+
+    const filename = firstImage.replace(/^\/static\//, '').replace(/^\/img\/produtos\//, '').replace(/^\//, '');
+    return `/img/produtos/${filename}`;
   } catch (e) {
     return '/img/logo_padrao.png';
   }
@@ -1002,10 +1006,11 @@ const CartPage = () => {
       let message = `Olá, sou o cliente ${customerName || '[Nome]'}. Meu pedido:\n\n`;
       
       cart.forEach(item => {
-        message += `*${item.quantity}x ${item.name} - R$ ${formatPrice(item.price)}*\n`;
+        const itemPrice = Number(item.price);
+        message += `*${item.quantity}x ${item.name} - R$ ${itemPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n`;
       });
 
-      message += `\nTotal Geral: R$ ${formatPrice(totalPrice)}`;
+      message += `\nTotal Geral: R$ ${Number(totalPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
       message += `\n\n💳 Forma de Pagamento: ${paymentMethod}`;
 
       const encodedMessage = encodeURIComponent(message);
