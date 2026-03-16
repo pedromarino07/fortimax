@@ -454,18 +454,18 @@ const HomePage = () => {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [dbCategories, setDbCategories] = useState<Category[]>([]);
 
-    useEffect(() => {
-    fetch('/api/categories')
+  useEffect(() => {
+    fetch('/api/products')
       .then(res => res.json())
       .then(data => {
-        // Fazemos um "alias" para garantir que o front ache o nome
-        const formatadas = data.map((c: any) => ({
-          ...c,
-          nome: c.name,  // Adiciona 'nome' se o front pedir 'nome'
-          label: c.name  // Adiciona 'label' se o front pedir 'label'
-        }));
-        setDbCategories(formatadas);
+        if (data.products) {
+          setFeaturedProducts(data.products.filter((p: Product) => p.featured).slice(0, 4));
+        }
       });
+
+    fetch('/api/categories')
+      .then(res => res.json())
+      .then(data => setDbCategories(data));
   }, []);
 
   const categories = [
@@ -478,7 +478,7 @@ const HomePage = () => {
 
   // Merge icons with DB categories
   const displayCategories = dbCategories.map(dbCat => {
-    const staticCat = categories.find(c => c.name === dbCat.name); // <--- AQUI
+    const staticCat = categories.find(c => c.name === dbCat.name);
     return {
       ...dbCat,
       icon: staticCat?.icon || '📦',
@@ -697,18 +697,16 @@ const ProductsPage = () => {
     params.append('page', currentPage.toString());
     params.append('limit', '40');
 
-    fetch(`/api/products?${params.toString()}`)
+      fetch(`/api/products?${params.toString()}`)
       .then(res => res.json())
       .then(data => {
-        // DEBUG: Verifique no console do navegador (F12) o que a API devolve
-        console.log("Resposta da API:", data); 
+        // CORREÇÃO: Altere de data.produtos para data.products
+        console.log("Dados recebidos da API:", data); // Isso vai confirmar o formato no F12
         
-        // Se 'data' for um array direto [p1, p2], use 'data'
-        // Se 'data' for um objeto {products: [...]}, use 'data.products'
-        setProducts(Array.isArray(data) ? data : (data.products || []));
+        setProducts(data.products || []); // O '|| []' previne que o app quebre se vier vazio
         setTotalPages(data.pagination?.totalPages || 1);
-      })
-      .catch(err => console.error("Erro no fetch de produtos:", err));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
   }, [activeCategory, searchTerm, currentPage, dbCategories]);
 
   useEffect(() => {
