@@ -474,6 +474,8 @@ const HomePage = () => {
     { name: 'Elétrico', icon: '⚡', color: 'bg-yellow-50' },
     { name: 'Tintas', icon: '🎨', color: 'bg-pink-50' },
     { name: 'Ferragens', icon: '🛠️', color: 'bg-gray-50' },
+    { name: 'Piscina', icon: '💧', color: 'bg-babyblue-50' },
+    { name: 'Lazer', icon: '🕶️', color: 'bg-green-50' },
   ];
 
   // Merge icons with DB categories
