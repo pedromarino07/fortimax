@@ -226,8 +226,8 @@ app.get('/api/products', async (req, res) => {
     const params: any[] = [];
     let paramIndex = 1;
 
-    if (category && category !== 'Todos') {
-      query += ` AND category = $${paramIndex++}`;
+    if (category && category !== 'Todos' && category !== 'undefined') {
+      query += ` AND (category = $${paramIndex++})`;
       params.push(category);
     }
 

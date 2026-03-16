@@ -532,11 +532,15 @@ const HomePage = () => {
           {displayCategories.map((cat, idx) => (
             <Link
               key={idx}
-              to={`/produtos?cat=${cat.name}`}
+              // Tenta usar cat.name, se não existir usa cat.label (que é o que vem do servidor agora)
+              to={`/produtos?cat=${cat.name || cat.label}`} 
               className={`${cat.color} p-8 rounded-2xl flex flex-col items-center justify-center space-y-4 hover:shadow-xl transition-all transform hover:-translate-y-2 border border-brand-primary/10`}
             >
               <span className="text-4xl">{cat.icon}</span>
-              <span className="font-bold text-brand-dark text-center text-sm uppercase">{cat.name}</span>
+              {/* Aqui também, garanta que o texto apareça */}
+              <span className="font-bold text-brand-dark text-center text-sm uppercase">
+                {cat.name || cat.label}
+              </span>
             </Link>
           ))}
         </div>
@@ -1856,7 +1860,9 @@ const AdminCategories = () => {
           <tbody className="divide-y divide-gray-100 text-sm">
             {categories.map(cat => (
               <tr key={cat.id} className="hover:bg-brand-bg/20 transition-colors">
-                <td className="px-6 py-4 font-bold text-brand-dark">{cat.name}</td>
+                <td className="px-6 py-4 font-bold text-brand-dark">
+                  {cat.name || cat.nome || "Sem Nome"}
+                </td>
                 <td className="px-6 py-4">
                   <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${cat.active ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
                     {cat.active ? 'Ativa' : 'Inativa'}
