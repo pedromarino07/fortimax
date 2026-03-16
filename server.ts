@@ -428,12 +428,16 @@ app.post('/api/finalizar-pedido', async (req, res) => {
 });
 
 // --- Vite Integration ---
+// --- Vite Integration ---
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
     });
+    
+    // Importante: As rotas de API DEVEM vir ANTES do Vite
+    // O seu Express já está processando as rotas acima, isso está OK.
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
@@ -445,7 +449,7 @@ async function startServer() {
 
   const PORT = Number(process.env.PORT) || 3000;
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`Server running on http://localhost:${PORT}`);
   });
 }
 
