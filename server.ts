@@ -132,7 +132,7 @@ app.use(cookieParser());
 // Multer for image uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const dir = './static/img/produtos';
+    const dir = './img/produtos';
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     cb(null, dir);
   },
@@ -277,8 +277,15 @@ app.get('/api/products', async (req, res) => {
 // Categories
 app.get('/api/categories', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM categories WHERE active = 1');
-    res.json(result.rows);
+    const result = await pool.query('SELECT id, name FROM categories WHERE active = 1 ORDER BY name ASC');
+    
+    // Mapeamos para 'label' e 'value' que o React (Select) usa nativamente
+    const categoriasFormatadas = result.rows.map(cat => ({
+      value: cat.id, 
+      label: cat.name
+    }));
+    
+    res.json(categoriasFormatadas);
   } catch (err) {
     console.error('Erro ao buscar categorias:', err);
     res.status(500).json({ error: 'Erro ao buscar categorias.' });
@@ -318,15 +325,25 @@ app.get('/api/products/:id', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM products WHERE id = $1', [req.params.id]);
     const product = result.rows[0];
+    
     if (!product) return res.status(404).json({ error: 'Produto não encontrado' });
+
     res.json({ 
-      ...product, 
-      images: product.images ? JSON.parse(product.images) : [], 
+      ...product,
+      // Garantimos conversão para número e lidamos com o nome da coluna no DB
+      price: parseFloat(product.price) || 0,
+      oldPrice: product["oldPrice"] ? parseFloat(product["oldPrice"]) : null,
+      // Tratamento de imagens (JSON string para Array)
+      images: typeof product.images === 'string' ? JSON.parse(product.images) : (product.images || []), 
+      // Conversão de inteiros para booleanos (0/1 -> false/true)
       oferta: !!product.oferta, 
       featured: !!product.featured, 
-      active: !!product.active 
+      active: !!product.active,
+      // Garantindo consistência com o que o frontend espera
+      stock: parseInt(product.stock) || 0
     });
   } catch (err) {
+    console.error('Erro na rota /api/products/:id:', err);
     res.status(500).json({ error: 'Erro ao buscar produto' });
   }
 });
@@ -420,7 +437,7 @@ app.post('/api/admin/products', authenticate, upload.array('images'), async (req
     }
 
     const files = req.files as any[];
-    const images = files.map(f => `/static/img/produtos/${f.filename}`);
+    const images = files.map(f => `/img/produtos/${f.filename}`);
     
     const result = await pool.query(`
        INSERT INTO products (name, category, price, "oldPrice", oferta, description, stock, images, featured, active)
@@ -445,7 +462,7 @@ app.put('/api/admin/products/:id', authenticate, upload.array('images'), async (
     const files = req.files as any[];
     let images = JSON.parse(existingImages || '[]');
     if (files.length > 0) {
-      const newImages = files.map(f => `/static/img/produtos/${f.filename}`);
+      const newImages = files.map(f => `/img/produtos/${f.filename}`);
       images = [...images, ...newImages];
     }
 

@@ -465,25 +465,26 @@ const HomePage = () => {
 
     fetch('/api/categories')
       .then(res => res.json())
-      .then(data => {
-        // data é um array de { id, name } vindo do banco
-        const icons: any = {
-          'Material de Construção': { icon: '🏗️', color: 'bg-orange-50' },
-          'Hidráulico': { icon: '🚰', color: 'bg-blue-50' },
-          'Elétrico': { icon: '⚡', color: 'bg-yellow-50' },
-          'Tintas': { icon: '🎨', color: 'bg-pink-50' },
-          'Ferragens': { icon: '🛠️', color: 'bg-gray-50' },
-        };
-
-        const mapped = data.map((c: any) => ({
-          ...c,
-          icon: icons[c.name]?.icon || '📦',
-          color: icons[c.name]?.color || 'bg-gray-50'
-        }));
-        
-        setDbCategories(mapped);
-      });
+      .then(data => setDbCategories(data));
   }, []);
+
+  const categories = [
+    { name: 'Material de Construção', icon: '🏗️', color: 'bg-orange-50' },
+    { name: 'Hidráulico', icon: '🚰', color: 'bg-blue-50' },
+    { name: 'Elétrico', icon: '⚡', color: 'bg-yellow-50' },
+    { name: 'Tintas', icon: '🎨', color: 'bg-pink-50' },
+    { name: 'Ferragens', icon: '🛠️', color: 'bg-gray-50' },
+  ];
+
+  // Merge icons with DB categories
+  const displayCategories = dbCategories.map(dbCat => {
+    const staticCat = categories.find(c => c.name === dbCat.name);
+    return {
+      ...dbCat,
+      icon: staticCat?.icon || '📦',
+      color: staticCat?.color || 'bg-brand-bg'
+    };
+  });
 
   return (
     <div className="space-y-12 md:space-y-16 pb-16 bg-brand-bg/30">
@@ -709,7 +710,7 @@ const ProductsPage = () => {
   }, [activeCategory, searchTerm, currentPage, dbCategories]);
 
   useEffect(() => {
-    fetch('/api/categorias')
+    fetch('/api/categories')
       .then(res => res.json())
       .then(data => setDbCategories(data));
   }, []);
@@ -879,7 +880,7 @@ const OffersPage = () => {
   }, [activeCategory, searchTerm, currentPage, dbCategories]);
 
   useEffect(() => {
-    fetch('/api/categorias')
+    fetch('/api/categories')
       .then(res => res.json())
       .then(data => setDbCategories(data));
   }, []);
@@ -1009,30 +1010,18 @@ const ProductDetailPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch(`/api/products/${id}`)
-      .then(res => {
-        if (!res.ok) throw new Error();
-        return res.json();
-      })
-      .then(data => {
-        // Adapt backend fields to frontend interface if necessary
-        const adaptedProduct = {
-          ...data,
-          price: parseFloat(data.preco_oferta || data.preco_base),
-          oldPrice: data.preco_oferta ? parseFloat(data.preco_base) : null,
-          images: data.imagem_url 
-          ? [data.imagem_url.startsWith('/') ? data.imagem_url : `/${data.imagem_url}`] 
-          : ['/img/logo.png'],
-          category: data.categoria_nome,
-          oferta: data.em_oferta,
-          stock: data.estoque,
-          name: data.nome,
-          description: data.descricao
-        };
-        setProduct(adaptedProduct);
-      })
-      .catch(() => navigate('/produtos'));
-  }, [id, navigate]);
+  fetch(`/api/products/${id}`)
+    .then(res => {
+      if (!res.ok) throw new Error();
+      return res.json();
+    })
+    .then(data => {
+      // Como o backend agora retorna os campos com os nomes corretos 
+      // (name, price, oldPrice, images, etc), basta salvar direto:
+      setProduct(data);
+    })
+    .catch(() => navigate('/produtos'));
+}, [id, navigate]);
 
   if (!product) return <div className="h-screen flex items-center justify-center font-bold text-brand-dark">Carregando...</div>;
 
