@@ -465,26 +465,25 @@ const HomePage = () => {
 
     fetch('/api/categories')
       .then(res => res.json())
-      .then(data => setDbCategories(data));
+      .then(data => {
+        // data é um array de { id, name } vindo do banco
+        const icons: any = {
+          'Material de Construção': { icon: '🏗️', color: 'bg-orange-50' },
+          'Hidráulico': { icon: '🚰', color: 'bg-blue-50' },
+          'Elétrico': { icon: '⚡', color: 'bg-yellow-50' },
+          'Tintas': { icon: '🎨', color: 'bg-pink-50' },
+          'Ferragens': { icon: '🛠️', color: 'bg-gray-50' },
+        };
+
+        const mapped = data.map((c: any) => ({
+          ...c,
+          icon: icons[c.name]?.icon || '📦',
+          color: icons[c.name]?.color || 'bg-gray-50'
+        }));
+        
+        setDbCategories(mapped);
+      });
   }, []);
-
-  const categories = [
-    { name: 'Material de Construção', icon: '🏗️', color: 'bg-orange-50' },
-    { name: 'Hidráulico', icon: '🚰', color: 'bg-blue-50' },
-    { name: 'Elétrico', icon: '⚡', color: 'bg-yellow-50' },
-    { name: 'Tintas', icon: '🎨', color: 'bg-pink-50' },
-    { name: 'Ferragens', icon: '🛠️', color: 'bg-gray-50' },
-  ];
-
-  // Merge icons with DB categories
-  const displayCategories = dbCategories.map(dbCat => {
-    const staticCat = categories.find(c => c.name === dbCat.name);
-    return {
-      ...dbCat,
-      icon: staticCat?.icon || '📦',
-      color: staticCat?.color || 'bg-brand-bg'
-    };
-  });
 
   return (
     <div className="space-y-12 md:space-y-16 pb-16 bg-brand-bg/30">
