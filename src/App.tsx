@@ -1100,11 +1100,11 @@ const CartPage = () => {
           <div className="space-y-3 md:space-y-4 pt-4 border-t border-gray-100">
             <div className="flex justify-between text-gray-600 font-medium text-sm md:text-base">
               <span>Subtotal</span>
-              <span>R$ {formatPrice(totalPrice)}</span>
+              <span>R$ {Number(totalPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
             <div className="border-t border-brand-primary/10 pt-4 flex justify-between text-xl md:text-2xl font-black text-brand-dark">
               <span>Total</span>
-              <span>R$ {formatPrice(totalPrice)}</span>
+              <span>R$ {Number(totalPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
           </div>
           

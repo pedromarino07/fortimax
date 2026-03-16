@@ -143,7 +143,6 @@ app.use(cookieParser());
 
 // Serve public folder at root
 app.use(express.static(path.join(process.cwd(), 'public')));
-app.use('/img', express.static(path.join(process.cwd(), 'public/img')));
 
 // Multer for image uploads
 const storage = multer.diskStorage({
