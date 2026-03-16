@@ -1117,8 +1117,8 @@ const CartPage = () => {
 
   const handleCheckout = async () => {
     try {
-      // Deduct stock in backend
-      const res = await fetch('/api/finalizar-pedido', {
+      // AQUI ESTAVA O ERRO: mudamos para /api/checkout
+      const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items: cart.map(i => ({ id: i.id, quantity: i.quantity })) })
@@ -1126,27 +1126,28 @@ const CartPage = () => {
 
       if (!res.ok) {
         const err = await res.json();
-        alert(err.error || 'Erro ao processar pedido. Verifique o estoque.');
+        alert(err.error || 'Erro ao processar estoque. Verifique a disponibilidade.');
         return;
       }
 
+      // Se chegou aqui, o estoque foi atualizado com sucesso no banco!
+      // Agora montamos o link do WhatsApp
       const phoneNumber = '5588988253050';
       let message = '*NOVO PEDIDO - FORTIMAX*\n\n';
-      message += 'Olá, gostaria de fazer um pedido.\n\n';
-      message += '*PRODUTOS SELECIONADOS:*\n';
+      message += 'Olá, gostaria de finalizar meu pedido:\n\n';
       
       cart.forEach(item => {
         message += `✅ ${item.quantity}x ${item.name} - R$ ${(item.price * item.quantity).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
       });
 
-      message += `\n*TOTAL ESTIMADO: R$ ${totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n\n`;
+      message += `\n*TOTAL: R$ ${totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n\n`;
       message += '_Poderia confirmar a disponibilidade e o frete para minha região?_';
 
-      const encodedMessage = encodeURIComponent(message);
-      const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+      const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
       
       window.open(whatsappUrl, '_blank');
       clearCart();
+      
     } catch (e) {
       console.error(e);
       alert('Erro de conexão com o servidor.');
