@@ -279,12 +279,14 @@ app.get('/api/products', async (req, res) => {
 // Categories
 app.get('/api/categories', async (req, res) => {
   try {
-    const result = await pool.query('SELECT id, name FROM categories WHERE active = 1 ORDER BY name ASC');
+    // REMOVI o WHERE active = 1 para garantir que elas venham para o Admin listar
+    const result = await pool.query('SELECT id, name, active FROM categories ORDER BY name ASC');
     
-    // Mapeamos para 'label' e 'value' que o React (Select) usa nativamente
+    // Mapeamos para 'label' e 'value' (para o Select) E incluímos o active para o Admin
     const categoriasFormatadas = result.rows.map(cat => ({
       value: cat.id, 
-      label: cat.name
+      label: cat.name,
+      active: !!cat.active // Converte 1 para true, 0 para false
     }));
     
     res.json(categoriasFormatadas);
