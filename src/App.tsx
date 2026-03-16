@@ -693,9 +693,11 @@ const ProductsPage = () => {
 
   useEffect(() => {
     const params = new URLSearchParams();
+
     if (activeCategory !== 'Todos') {
-      const cat = dbCategories.find(c => c.name === activeCategory);
-      if (cat) params.append('categoryId', cat.id.toString());
+      // MUDE ESTA LINHA: Em vez de buscar o ID, envie o NOME diretamente
+      // E mude de 'categoryId' para 'category'
+      params.append('category', activeCategory); 
     }
     if (searchTerm) params.append('search', searchTerm);
     params.append('page', currentPage.toString());
@@ -854,9 +856,11 @@ const OffersPage = () => {
 
   useEffect(() => {
     const params = new URLSearchParams();
+
     if (activeCategory !== 'Todos') {
-      const cat = dbCategories.find(c => c.name === activeCategory);
-      if (cat) params.append('categoryId', cat.id.toString());
+      // MUDE ESTA LINHA: Em vez de buscar o ID, envie o NOME diretamente
+      // E mude de 'categoryId' para 'category'
+      params.append('category', activeCategory); 
     }
     if (searchTerm) params.append('search', searchTerm);
     params.append('page', currentPage.toString());
