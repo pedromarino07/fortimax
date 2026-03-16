@@ -1133,14 +1133,14 @@ const CartPage = () => {
       // Se chegou aqui, o estoque foi atualizado com sucesso no banco!
       // Agora montamos o link do WhatsApp
       const phoneNumber = '5588988253050';
-      let message = 'NOVO PEDIDO - FORTIMAX: Olá, gostaria de finalizar meu pedido:\n';
+      let message = 'NOVO PEDIDO - FORTIMAX:\n';
       message += 'Olá, gostaria de finalizar meu pedido:\n\n';
       
       cart.forEach(item => {
         message += `${item.quantity}x ${item.name} - R$ ${(item.price * item.quantity).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} - `;
       });
 
-      message += `TOTAL: R$ ${totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+      message += `TOTAL: R$ ${totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
       message += 'Poderia confirmar a disponibilidade?';
 
       const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
